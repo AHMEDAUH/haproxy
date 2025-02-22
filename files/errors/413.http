@@ -1,0 +1,11 @@
+HTTP/1.0 413 Payload Too Large
+Cache-Control: no-cache
+Connection: close
+Content-Type: text/html
+
+<html>
+  <body>
+    <h1>413 Payload Too Large</h1>
+    <p>The request payload exceeds the allowed size limit of {{ haproxy_max_payload_size }}.</p>
+  </body>
+</html>

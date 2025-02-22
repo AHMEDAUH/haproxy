@@ -1,0 +1,25 @@
+- name: Ensure HAProxy run directory exists
+  file:
+    path: "{{ haproxy_run_dir }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0750"
+
+- name: Deploy HAProxy systemd service file
+  template:
+    src: haproxy.service.j2
+    dest: "{{ haproxy_service_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Reload systemd daemon
+  systemd:
+    daemon_reload: yes
+
+- name: Enable and start HAProxy service
+  systemd:
+    name: haproxy
+    state: started
+    enabled: yes

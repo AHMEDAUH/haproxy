@@ -1,0 +1,54 @@
+- name: Check if SELinux policy for HAProxy already exists
+  command: semodule -l | grep haproxy_custom
+  register: selinux_policy_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Create SELinux policy for HAProxy (if not exists)
+  template:
+    src: haproxy_custom.te.j2
+    dest: "/tmp/haproxy_custom.te"
+  when: selinux_policy_check.rc != 0
+
+- name: Compile SELinux policy (if not exists)
+  command: >
+    checkmodule -M -m -o /tmp/haproxy_custom.mod /tmp/haproxy_custom.te
+  when: selinux_policy_check.rc != 0
+  become: yes
+
+- name: Package SELinux policy (if not exists)
+  command: >
+    semodule_package -o /tmp/haproxy_custom.pp -m /tmp/haproxy_custom.mod
+  when: selinux_policy_check.rc != 0
+  become: yes
+
+- name: Load SELinux policy (if not exists)
+  command: >
+    semodule -i /tmp/haproxy_custom.pp
+  when: selinux_policy_check.rc != 0
+  become: yes
+
+- name: Set SELinux context for HAProxy directories
+  sefcontext:
+    target: "{{ item.path }}(/.*)?"
+    setype: "{{ item.type }}"
+  loop:
+    - { path: "{{ haproxy_config_dir }}", type: "haproxy_etc_t" }
+    - { path: "{{ haproxy_run_dir }}", type: "haproxy_var_run_t" }
+    - { path: "{{ haproxy_ssl_dir }}", type: "cert_t" }
+    - { path: "{{ haproxy_log_dir }}", type: "haproxy_log_t" }
+  when: selinux_policy_check.rc != 0
+
+- name: Apply SELinux context
+  command: >
+    restorecon -Rv {{ haproxy_config_dir }} {{ haproxy_run_dir }} {{ haproxy_ssl_dir }} {{ haproxy_log_dir }}
+  when: selinux_policy_check.rc != 0
+  become: yes
+
+- name: Allow HAProxy to connect to the network
+  seboolean:
+    name: haproxy_connect_any
+    state: yes
+    persistent: yes
+  when: selinux_policy_check.rc != 0
+  become: yes

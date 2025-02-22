@@ -1,0 +1,26 @@
+[Unit]
+Description=HAProxy Load Balancer
+After=network.target syslog.target
+
+[Service]
+Type=simple
+ExecStart={{ haproxy_binary_dir }}/haproxy -f {{ haproxy_config_file }} -Ws
+ExecReload={{ haproxy_binary_dir }}/haproxy -f {{ haproxy_config_file }} -Ws -sf $MAINPID
+User={{ haproxy_user }}
+Group={{ haproxy_group }}
+Restart=on-failure
+RestartSec=5s
+
+# Options de sécurité
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+ReadOnlyDirectories=/
+ReadWriteDirectories={{ haproxy_config_dir }} {{ haproxy_run_dir }} /var/lib/haproxy {{ haproxy_log_dir }} {{ haproxy_ssl_dir }}
+
+# Configuration SELinux
+SELinuxContext=system_u:system_r:haproxy_t:s0
+
+[Install]
+WantedBy=multi-user.target

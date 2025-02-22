@@ -1,0 +1,22 @@
+- name: Create HAProxy log directory
+  file:
+    path: "{{ haproxy_log_dir }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0750"
+
+- name: Configure HAProxy to log to a file
+  lineinfile:
+    path: "{{ haproxy_config_file }}"
+    line: "log {{ haproxy_log_file }} local0"
+    insertafter: "EOF"
+    create: yes
+
+- name: Configure logrotate for HAProxy
+  template:
+    src: haproxy_logrotate.j2
+    dest: "/etc/logrotate.d/haproxy"
+    owner: root
+    group: root
+    mode: "0644"

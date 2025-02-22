@@ -1,0 +1,52 @@
+
+---
+# Charger les variables personnalisées si fournies
+# - name: Check if custom variables file exists
+#   stat:
+#     path: "{{ haproxy_custom_config }}"
+#   register: custom_vars_file
+#   when: haproxy_custom_config | default(false)
+
+# - name: Load custom variables if provided and valid
+#   include_vars:
+#     file: "{{ haproxy_custom_config }}"
+#   when: haproxy_custom_config | default(false) and custom_vars_file.stat.exists
+#   ignore_errors: yes
+#   register: loaded_vars
+
+# - name: Display error if custom variables file is invalid or inaccessible
+#   debug:
+#     msg: >
+#       The custom variables file '{{ haproxy_custom_config }}' is invalid or inaccessible.
+#       Using default variables. Please check the file and try again.
+#   when: haproxy_custom_config | default(false) and (not custom_vars_file.stat.exists or loaded_vars is defined and loaded_vars.failed)
+
+
+# Inclure les autres tâches
+- name: Include installation tasks
+  include_tasks: install.yml
+
+- name: Include SELinux configuration tasks
+  include_tasks: configure_selinux.yml
+
+- name: Include service configuration tasks
+  include_tasks: configure_service.yml
+
+- name: Deploy HAProxy configuration
+  include_tasks: deploy_config.yml
+  when: not haproxy_custom_config
+
+- name: Use custom HAProxy configuration if provided
+  copy:
+    src: "{{ haproxy_custom_config }}"
+    dest: "{{ haproxy_config_file }}"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0640"
+  when: haproxy_custom_config
+
+- name: Include log configuration tasks
+  include_tasks: configure_logs.yml
+
+- name: Verify SSL connectivity
+  include_tasks: verify_ssl.yml

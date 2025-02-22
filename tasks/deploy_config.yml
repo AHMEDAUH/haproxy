@@ -1,0 +1,65 @@
+
+- name: Create HAProxy configuration directory
+  file:
+    path: "{{ haproxy_config_dir }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+  when: not haproxy_custom_config
+
+- name: Deploy HAProxy configuration file
+  template:
+    src: haproxy.cfg.j2
+    dest: "{{ haproxy_config_file }}"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0640"
+  when: not haproxy_custom_config
+
+- name: Create HAProxy SSL directory
+  file:
+    path: "{{ haproxy_ssl_dir }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0750"
+  when: not haproxy_custom_config
+
+- name: Deploy SSL certificates for frontends
+  copy:
+    src: "files/{{ item | basename }}"
+    dest: "{{ item }}"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0640"
+  loop: "{{ haproxy_frontends | selectattr('ssl', 'equalto', true) | map(attribute='ssl_certs') | flatten | unique }}"
+  when: not haproxy_custom_config
+
+- name: Deploy CA certificate
+  copy:
+    src: "files/{{ item | basename }}"
+    dest: "{{ item }}"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0640"
+  loop: "{{ haproxy_frontends | selectattr('ssl', 'equalto', true) | map(attribute='ssl_ca') | flatten | unique }}"
+  when: not haproxy_custom_config
+
+- name: Deploy error pages
+  copy:
+    src: "files/errors/{{ item.code }}.http"
+    dest: "{{ item.file }}"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0640"
+  loop: "{{ haproxy_error_pages }}"
+  when: not haproxy_custom_config
+
+- name: Deploy CA certificate
+  copy:
+    src: "files/ca.crt"
+    dest: "{{ haproxy_ssl_ca }}"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0640"
+  when: not haproxy_custom_config

@@ -1,0 +1,9 @@
+
+- name: Run sslscan to verify ciphers
+  command: sslscan {{ ansible_fqdn }}
+  register: sslscan_output
+  changed_when: false
+
+- name: Display sslscan results
+  debug:
+    var: sslscan_output.stdout  

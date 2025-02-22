@@ -1,0 +1,15 @@
+- name: Verify HTTP to HTTPS redirection
+  uri:
+    url: "http://{{ ansible_fqdn }}"
+    method: GET
+    follow_redirects: none
+    status_code: 301
+  register: http_redirect
+  changed_when: false
+
+- name: Ensure HTTP redirects to HTTPS
+  assert:
+    that:
+      - "'https://' in http_redirect.redirected"
+    fail_msg: "HTTP is not redirecting to HTTPS."
+    success_msg: "HTTP is correctly redirecting to HTTPS."

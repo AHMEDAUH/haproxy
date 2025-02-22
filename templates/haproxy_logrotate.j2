@@ -1,0 +1,12 @@
+{{ haproxy_log_file }} {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        /bin/systemctl reload haproxy > /dev/null 2>&1 || true
+    endscript
+}

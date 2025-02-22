@@ -1,0 +1,51 @@
+# - name: Verify HTTPS connectivity (TLS 1.2)
+#   uri:
+#     url: "https://{{ ansible_fqdn }}"
+#     method: GET
+#     validate_certs: yes
+#     timeout: 10
+#     headers:
+#       User-Agent: "Ansible SSL Check"
+#     status_code: 200
+#   environment:
+#     SSL_CERT_FILE: "{{ haproxy_ssl_ca }}"
+#   vars:
+#     ansible_python_interpreter: /usr/bin/python3
+#   when: "'TLSv1.2' in ssl_enabled_versions"
+
+# - name: Verify HTTPS connectivity (TLS 1.3)
+#   uri:
+#     url: "https://{{ ansible_fqdn }}"
+#     method: GET
+#     validate_certs: yes
+#     timeout: 10
+#     headers:
+#       User-Agent: "Ansible SSL Check"
+#     status_code: 200
+#   environment:
+#     SSL_CERT_FILE: "{{ haproxy_ssl_ca }}"
+#   vars:
+#     ansible_python_interpreter: /usr/bin/python3
+#   when: "'TLSv1.3' in ssl_enabled_versions"
+
+
+
+---
+
+- name: Verify HTTPS connectivity for SSL frontends
+  uri:
+    url: "https://{{ ansible_fqdn }}:{{ item.port }}"
+    method: GET
+    validate_certs: yes
+    timeout: 10
+    headers:
+      User-Agent: "Ansible SSL Check"
+    status_code: 200
+  environment:
+    SSL_CERT_FILE: "{{ item.ssl_ca }}"
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+  loop: "{{ haproxy_frontends | selectattr('ssl', 'equalto', true) | list }}"
+  when: item.ssl | default(false)
+  # when: "'TLSv1.2' in ssl_enabled_versions"
+  # when: "'TLSv1.3' in ssl_enabled_versions"

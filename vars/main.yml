@@ -1,0 +1,100 @@
+
+haproxy_version: "2.8.3"
+haproxy_install_dir: "/applis/haproxy"
+haproxy_config_dir: "{{ haproxy_install_dir }}/etc"
+haproxy_binary_dir: "{{ haproxy_install_dir }}/sbin"
+haproxy_run_dir: "{{ haproxy_install_dir }}/run"
+haproxy_socket: "{{ haproxy_run_dir }}/admin.sock"
+haproxy_ssl_dir: "{{ haproxy_install_dir }}/ssl"
+haproxy_log_dir: "/applis/logs"
+haproxy_log_file: "{{ haproxy_log_dir }}/haproxy.log"
+haproxy_user: "haproxy"
+haproxy_group: "haproxy"
+haproxy_config_file: "{{ haproxy_config_dir }}/haproxy.cfg"
+haproxy_service_file: "/etc/systemd/system/haproxy.service"
+haproxy_custom_config: ""  # Chemin vers un fichier de configuration personnalisé (optionnel)
+
+haproxy_max_payload_size: "10m"  # Taille maximale du payload (10 Mo)
+
+ssl_enabled_versions:
+  - "TLSv1.2"
+  - "TLSv1.3"
+balance_algorithms:
+  - roundrobin
+  - leastconn
+  - source
+  - static-rr
+  - first
+  - uri
+haproxy_stats:
+  enabled: true  # Activer les statistiques
+  port: 1936     # Port d'écoute pour les statistiques
+  auth:
+    username: "admin"  # Nom d'utilisateur pour l'authentification
+    password: "securepassword"  # Mot de passe pour l'authentification
+  uri: "/stats"  # URI pour accéder aux statistiques
+
+haproxy_rate_limits:
+  - name: ip_rate_limit
+    limit: 100  # Nombre maximal de requêtes par période
+    period: 10s # Période de temps (10 secondes)
+    frontend: frontend_http  # Appliquer à ce frontend
+
+haproxy_error_pages:
+  - code: 413
+    file: /applis/haproxy/errors/413.http
+  - code: 429
+    file: /applis/haproxy/errors/429.http
+  - code: 500
+    file: /applis/haproxy/errors/500.http
+  - code: 503
+    file: /applis/haproxy/errors/503.http
+
+haproxy_frontends:
+  - name: frontend_http
+    port: 80
+    ssl: false
+    backend: http_back
+  - name: frontend_app1
+    port: 443
+    ssl: true
+    ssl_certs:
+      - "{{ haproxy_ssl_dir }}/app1.pem"
+    ssl_ca: "{{ haproxy_ssl_dir }}/ca.crt"
+    backend: app1_back
+    acls:
+      - name: is_app1
+        condition: "path_beg /app1"
+      - name: is_api
+        condition: "path_beg /api"
+  - name: frontend_app2
+    port: 8443
+    ssl: true
+    ssl_certs:
+      - "{{ haproxy_ssl_dir }}/app2.pem"
+    ssl_ca: "{{ haproxy_ssl_dir }}/ca.crt"
+    backend: app2_back
+
+haproxy_backends:
+  - name: http_back
+    balance_algorithm: roundrobin
+    sticky_sessions: false
+    servers:
+      - name: web1
+        address: 192.168.1.10:80
+      - name: web2
+        address: 192.168.1.11:80
+  - name: app1_back
+    balance_algorithm: leastconn
+    sticky_sessions: true
+    cookie_name: "APP1_SESSION"
+    servers:
+      - name: app1_server1
+        address: 192.168.1.20:8080
+  - name: app2_back
+    balance_algorithm: source
+    sticky_sessions: true
+    cookie_name: "APP2_SESSION"
+    servers:
+      - name: app2_server1
+        address: 192.168.1.30:8080

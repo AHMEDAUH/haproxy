@@ -1,0 +1,53 @@
+
+---
+- name: Install required packages
+  yum:
+    name:
+      - gcc
+      - make
+      - openssl-devel
+      - systemd-devel
+      - policycoreutils-python-utils
+      - selinux-policy-devel
+      - openssl
+      - sslscan
+    state: present
+
+- name: Create HAProxy installation directory
+  file:
+    path: "{{ haproxy_install_dir }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+
+- name: Download HAProxy source code
+  get_url:
+    url: "https://www.haproxy.org/download/{{ haproxy_version.split('.')[0] }}/src/haproxy-{{ haproxy_version }}.tar.gz"
+    dest: "/tmp/haproxy-{{ haproxy_version }}.tar.gz"
+
+- name: Extract HAProxy source code
+  unarchive:
+    src: "/tmp/haproxy-{{ haproxy_version }}.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: Compile and install HAProxy
+  command: >
+    make TARGET=linux-glibc USE_OPENSSL=1 USE_SYSTEMD=1
+    PREFIX={{ haproxy_install_dir }}
+    SBINDIR={{ haproxy_binary_dir }}
+    chdir="/tmp/haproxy-{{ haproxy_version }}"
+  become: yes
+
+- name: Create HAProxy SSL directory
+  file:
+    path: "{{ haproxy_ssl_dir }}"
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: "0750"
+    
+- name: Clean up temporary files
+  file:
+    path: "/tmp/haproxy-{{ haproxy_version }}"
+    state: absent
