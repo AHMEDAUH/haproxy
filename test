@@ -1,3 +1,4 @@
+
 module haproxy_custom 1.0;
 
 require {
@@ -9,6 +10,9 @@ require {
     class file { read getattr open };
     class dir { read search };
 }
+
+# Déclarer le type haproxy_t si nécessaire
+type haproxy_t;
 
 # Autoriser HAProxy à accéder à son répertoire personnalisé
 allow haproxy_t /applis/haproxy/etc/: dir { read search };
