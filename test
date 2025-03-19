@@ -1,72 +1,53 @@
-Pipeline Documentation: Build Custom OS Images
-Overview
+# Pipeline Documentation: Build Custom OS Images
 
+## Overview
 This pipeline allows users to build custom OS images based on the latest release with a set of client-specific customizations. The process is automated through Jenkins, and users can easily input their account information, service name, and other required details.
 
-1. Prerequisites
+---
+
+## 1. Prerequisites
+
 Before using the pipeline, ensure the following:
 
-You have access to the Jenkins server running the pipeline.
-You have a GitHub account and access to the repository where the OS image source code is stored.
-Ensure you have the necessary account credentials (username, password, account ID, etc.) to customize the image.
-2. Input Parameters
+- You have access to the Jenkins server running the pipeline.
+- You have a **GitHub account** and access to the repository where the OS image source code is stored.
+- Ensure you have the necessary **account credentials** (username, password, account ID, etc.) to customize the image.
+
+---
+
+## 2. Input Parameters
+
 To use the pipeline, you'll need to provide the following input parameters:
 
-Account Name: The name of the user account.
-Account ID: The unique identifier for the user account.
-Account User: The username used for authentication.
-Account Password: The password associated with the user account.
-Service Name: The name of the service you want the custom OS image to be based on.
-3. Steps to Trigger the Pipeline
-Access the Jenkins Dashboard:
-Navigate to the Jenkins web interface and log in with your credentials.
-Select the OS Image Build Pipeline:
-In the Jenkins dashboard, locate the pipeline for building the OS image (e.g., "Custom OS Image Build").
-Enter Input Parameters:
-When you trigger the pipeline, you will be prompted to enter the required input parameters (account name, ID, password, and service name).
-Start the Build:
-Click Build Now to start the process. The pipeline will fetch the latest release from GitHub, use the provided parameters, and start building the OS image.
-Monitor the Build:
-You can monitor the progress of the build via the Jenkins UI. The log will show detailed information about each step of the build process.
-4. What Happens During the Build?
-Source Code Fetching:
-The pipeline automatically fetches the latest release from the GitHub repository. It can track the latest tag or commit to ensure the OS image is based on the most recent version.
-Customization:
-Based on the input parameters, the pipeline customizes the OS image. For example, it might modify configuration files, install additional software, or adjust the system environment.
-Image Creation:
-The pipeline builds the OS image and ensures it meets the requirements specified by the user.
-Image Packaging and Delivery:
-Once the image is built, the pipeline packages the image and provides a download link or stores it in a pre-defined location (e.g., cloud storage or an internal repository).
-5. Monitoring & Troubleshooting
-Build Logs:
-You can view the logs from the Jenkins build to see any errors or issues during the build process. The logs will provide helpful information if the build fails.
-Common Issues:
-If the build fails, check the following:
-Verify the input credentials are correct.
-Ensure the GitHub repository is accessible and contains the latest release.
-Review the error messages in the Jenkins log for more information.
-Notifications:
-The pipeline may be set up to send notifications (via email or Slack) to alert users if the build succeeds or fails.
-6. Security Considerations
-Storing Credentials:
-Your Jenkins pipeline uses the Jenkins credentials plugin to securely store sensitive information like account passwords. This ensures credentials are never exposed during the build process.
-Access Control:
-Only authorized users should have access to trigger the pipeline. Be sure that permissions are set properly in Jenkins to prevent unauthorized access.
-7. Advanced Features (Optional)
-If your pipeline has advanced functionality, such as the ability to deploy the image or run additional tests, make sure to describe those features here:
+- **Account Name:** The name of the user account.
+- **Account ID:** The unique identifier for the user account.
+- **Account User:** The username used for authentication.
+- **Account Password:** The password associated with the user account.
+- **Service Name:** The name of the service you want the custom OS image to be based on.
 
-Deploying the Image:
-If your pipeline supports deployment after the image is built, explain how users can deploy the image to their environment.
-Automated Testing:
-If the pipeline runs tests on the image after it's built (e.g., functional tests, smoke tests), mention what tests are run and how to review the results.
-8. FAQ
-Q: How do I know which version of the OS image I’m building?
-The pipeline uses the latest release from the GitHub repository. You can check the GitHub tags or commit logs to identify the exact version being used.
-Q: Can I modify the customization process?
-Yes, the pipeline can be extended to accommodate additional customization requirements. Contact the administrator if you need to adjust the customization process.
-Q: How do I troubleshoot a failed build?
-Review the logs in the Jenkins UI. If the problem is related to the input parameters or configuration files, the logs should provide sufficient detail to identify and resolve the issue.
-9. Conclusion
-The Jenkins pipeline provides an automated and secure way for users to build custom OS images based on the latest releases from GitHub. By following this documentation, users should be able to easily trigger the pipeline and customize the images to meet their needs.
+---
 
-Feel free to adjust the sections or add more based on your specific use case and how your pipeline is set up. Let me know if you need any more help!
+## 3. Steps to Trigger the Pipeline
+
+1. **Access the Jenkins Dashboard:**
+   - Navigate to the Jenkins web interface and log in with your credentials.
+   
+2. **Select the OS Image Build Pipeline:**
+   - In the Jenkins dashboard, locate the pipeline for building the OS image (e.g., *"Custom OS Image Build"*).
+   
+3. **Enter Input Parameters:**
+   - When you trigger the pipeline, you will be prompted to enter the required input parameters (account name, ID, password, and service name). 
+
+4. **Start the Build:**
+   - Click **Build Now** to start the process. The pipeline will fetch the latest release from GitHub, use the provided parameters, and start building the OS image.
+
+5. **Monitor the Build:**
+   - You can monitor the progress of the build via the Jenkins UI. The log will show detailed information about each step of the build process.
+
+---
+
+## 4. What Happens During the Build?
+
+- **Source Code Fetching:**
+   - The pipeline automatically fetches the latest release from the GitHub repository. It can track the latest tag or commit to ensure the OS image is based on the most recent version.
+
