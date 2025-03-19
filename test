@@ -1,7 +1,9 @@
 # Pipeline Documentation: Infra Creation and HAProxy Deployment
 
 ## Overview
-This pipeline automates the creation of infrastructure and deployment of **HAProxy** from source. The focus of the pipeline is on delivering **high-performance** HAProxy configurations, **high availability**, and **resiliency**. It ensures that HAProxy is deployed efficiently, with an emphasis on rapid deployment and reliable failover between availability zones.
+This pipeline automates the creation of infrastructure and deployment of **HAProxy** from source. The focus of the pipeline is on **high-performance** HAProxy configurations, **high availability**, and **resiliency**. Users can provide a **GitHub repository** containing their custom configuration files (e.g., `haproxy.cfg`) and specify the region, node name, and VM port ID to ensure a smooth, customizable deployment. 
+
+Additionally, the pipeline ensures that **Terraform** is used to import a **VM port ID** so that clients can retain fixed IP addresses, preventing any disruptions to service.
 
 ---
 
@@ -9,10 +11,12 @@ This pipeline automates the creation of infrastructure and deployment of **HAPro
 
 Before using this pipeline, ensure the following:
 
-- You have access to the **Jenkins server** running the pipeline.
-- **SSH key access** to the infrastructure or instances that will be used.
-- **Account credentials** are available (username, password, account ID, etc.).
-- Required dependencies for **HAProxy** are accessible for compiling from source.
+- **Jenkins server** access.
+- **SSH key access** to the infrastructure or instances.
+- **Account credentials** (username, password, account ID, etc.).
+- **GitHub repository** URL containing your custom configuration files, including `haproxy.cfg`.
+- **VM Port ID** for retaining fixed IP addresses (optional).
+- **Required dependencies** for compiling HAProxy from source.
 
 ---
 
@@ -25,8 +29,13 @@ To use the pipeline, you’ll need to provide the following input parameters:
 - **Account User:** The username used for authentication.
 - **Account Password:** The password associated with the user account.
 - **Service Name:** The name of the service for which HAProxy is being deployed.
+- **GitHub Repository URL:** The URL of the GitHub repository containing your custom `haproxy.cfg` and any other configuration files. The pipeline will automatically retrieve the required files from the repository.
+- **Node Name:** The name assigned to the HAProxy node.
+- **Security Group Name:** The security group to associate with the deployed infrastructure. This defines the firewall rules for your instances.
+- **Ports:** The ports HAProxy should listen on (e.g., HTTP, HTTPS). If no ports are provided, defaults can be applied.
+- **VM Port ID (Optional):** The port ID of the VM to be used for the instance. This ensures that a fixed IP address is retained during deployment, preventing IP address changes.
 
-These input parameters are used to customize the deployment based on your account and service configuration.
+These parameters allow you to customize the HAProxy deployment and infrastructure creation process based on your specific requirements.
 
 ---
 
@@ -39,96 +48,105 @@ These input parameters are used to customize the deployment based on your accoun
    - In the Jenkins dashboard, locate the pipeline for deploying infrastructure and HAProxy (e.g., *"Infra and HAProxy Deployment"*).
 
 3. **Enter Input Parameters:**
-   - When you trigger the pipeline, you will be prompted to enter the required input parameters (account name, ID, password, and service name).
+   - When you trigger the pipeline, you will be prompted to enter the required input parameters (account name, ID, password, service name, GitHub repository URL, node name, security group name, ports, and optionally the VM port ID).
 
 4. **Start the Build:**
    - Click **Build Now** to start the process. The pipeline will begin the infrastructure creation and HAProxy deployment process based on the provided parameters.
 
 5. **Monitor the Build:**
-   - You can monitor the progress of the pipeline via the Jenkins UI. Detailed logs will show each stage of the build process, including infrastructure provisioning, HAProxy compilation, and configuration.
+   - You can monitor the progress of the pipeline via the Jenkins UI. Detailed logs will show each stage of the build process, including HAProxy compilation, custom configuration application, node deployment, and the retention of fixed IPs via the VM port ID.
 
 ---
 
 ## 4. What Happens During the Build?
 
 ### **HAProxy Compilation and Deployment:**
-- The pipeline will **compile HAProxy from source**, ensuring that the version deployed is the latest and fully optimized for your environment.
-- **High Performance Configuration:** The deployment is designed to ensure HAProxy is optimized for high throughput, minimal latency, and high efficiency. Settings like worker processes, tuning for maximum connections per second, and optimized timeouts ensure the best possible performance under heavy traffic.
+- **HAProxy from Source:** The pipeline compiles HAProxy from source to ensure that the latest version is deployed and optimized for your environment.
+- **Custom Configuration Files:** If you provide a GitHub repository URL, the pipeline will automatically retrieve the required configuration files (e.g., `haproxy.cfg`) from the specified repository. The configuration file path will be computed based on the selected region and node name.
   
-### **Resiliency & High Availability:**
-- **Multi-AZ Deployment:** The pipeline ensures HAProxy is deployed across multiple availability zones (AZs), ensuring high **resiliency** and **fault tolerance**. In case of failure in one zone, the other zones will take over, ensuring continuous availability.
-- **Automatic Failover:** The HAProxy configuration is designed for automatic failover between nodes. It leverages **keepalived** or **virtual IPs** to ensure that the active node is always available to handle traffic. This minimizes downtime and maximizes service reliability.
-- **Load Balancing:** The load balancer is set up to evenly distribute traffic between nodes, ensuring no single point of failure and that the workload is effectively distributed across your environment.
+### **High Availability and Resiliency:**
+- **Multi-AZ Deployment:** The pipeline deploys HAProxy across multiple availability zones (AZs), ensuring high availability and fault tolerance. If one zone fails, traffic will automatically failover to another zone, keeping the service available.
+- **Automatic Failover:** HAProxy is configured with automatic failover, ensuring that if one HAProxy node becomes unavailable, traffic is seamlessly redirected to another node.
+- **Load Balancing:** HAProxy will distribute traffic efficiently between nodes, ensuring no single node becomes overwhelmed with requests.
 
 ### **Security & SELinux Configuration:**
-- The pipeline configures **SELinux** policies to ensure proper security and operation within a secure environment. SELinux ensures that HAProxy runs with the least privileges, preventing unauthorized access and mitigating security risks.
+- The pipeline configures **SELinux** policies to ensure that HAProxy runs with the least privileges required for proper functioning.
+- **Security Group Configuration:** The specified **security group name** is applied to the instances, defining which ports are open and which sources can access the deployed infrastructure.
+
+### **Node Deployment:**
+- **Node Name:** The specified node name is used for naming instances and configuring HAProxy settings, helping to identify and manage nodes effectively.
+- **Ports Configuration:** You can specify the ports that HAProxy should listen on. If no ports are provided, the pipeline defaults to HTTP (80) and HTTPS (443).
+
+### **Fixed IP Retention:**
+- **VM Port ID (Optional):** If a **VM Port ID** is provided, the pipeline will use Terraform to import the port, ensuring that the VM retains its **fixed IP address** throughout the deployment process. This prevents the loss of the IP address and ensures consistent access to your service after deployment.
 
 ### **Speed of Deployment:**
-- **Efficient Deployment:** The pipeline is optimized for speed. Each step, from HAProxy compilation to node deployment, is streamlined to minimize deployment time. By deploying nodes one by one across availability zones, the pipeline ensures that infrastructure is provisioned quickly without sacrificing reliability.
-- **Minimal Downtime:** The deployment process is designed to ensure that HAProxy is up and running with minimal downtime. Configuration updates, if required, are applied seamlessly without impacting the active traffic flow.
+- **Efficient Deployment:** The pipeline is optimized for speed. It compiles HAProxy, applies custom configurations, and deploys the infrastructure with minimal delay, ensuring that the HAProxy is ready to handle traffic quickly.
+- **Minimal Downtime:** The deployment process ensures low downtime, with configuration changes applied seamlessly without affecting service availability.
 
 ---
 
 ## 5. Monitoring & Troubleshooting
 
 ### **Build Logs:**
-- You can view the logs from the Jenkins build to see detailed information about each step. The logs will include HAProxy compilation details, security configurations, and node deployment status.
+- You can view the logs from the Jenkins build to see detailed information about each step. This includes the retrieval of your custom `haproxy.cfg` file from GitHub, HAProxy compilation, security group and port configurations, and node deployment status.
 
 ### **Common Issues:**
-- **Performance Issues:** If HAProxy is not performing as expected, check the log files for any misconfiguration related to connection limits, timeouts, or load balancing.
-- **HAProxy Failures:** If HAProxy fails to compile or deploy, check the logs for any errors related to dependencies or environment configuration. Ensure that all required libraries are installed and that your environment meets the prerequisites.
-- **Resiliency Issues:** If automatic failover isn't functioning, ensure that keepalived or the failover mechanism is correctly configured.
+- **HAProxy Configuration Issues:** If there are errors related to the `haproxy.cfg` file, check the logs for issues such as incorrect file paths, syntax errors, or unsupported settings.
+- **Security Group or Port Issues:** If your security groups or port configurations are not applied correctly, ensure that the correct **security group name** is specified and that the appropriate **ports** are open.
+- **IP Address Issues:** If the fixed IP address is not retained, ensure that the **VM Port ID** is provided and correctly imported via Terraform.
 
 ### **Notifications:**
-- The pipeline may send notifications (via email or Slack) to alert users about the build status. This includes notifications if the build fails or completes successfully.
+- The pipeline may send notifications (via email or Slack) to alert users about the build status. These notifications will include updates if the build fails or completes successfully.
 
 ---
 
 ## 6. Security Considerations
 
 ### **Storing Credentials:**
-- Your Jenkins pipeline securely stores sensitive information like account passwords using the **Jenkins credentials plugin**. Credentials are injected into the pipeline securely during the build process.
+- Your Jenkins pipeline securely stores sensitive information such as account passwords using the **Jenkins credentials plugin**. Credentials are injected securely during the build process.
 
 ### **Access Control:**
-- Ensure that only authorized users have access to trigger this pipeline in Jenkins. Proper permissions and roles should be set up to prevent unauthorized access to infrastructure creation or sensitive configurations.
+- Ensure that only authorized users have access to trigger this pipeline. Proper permissions and roles should be set up in Jenkins to prevent unauthorized access to sensitive configurations or deployments.
 
 ---
 
 ## 7. Advanced Features (Optional)
 
-If your pipeline includes advanced features such as automatic scaling or customized HAProxy configurations, document them here:
+If your pipeline includes advanced features such as automatic scaling or advanced HAProxy configurations, document them here:
 
 ### **Scaling Infrastructure:**
-- The pipeline can automatically scale the infrastructure based on the number of nodes or service demands. This scaling is done in a way that minimizes downtime, allowing for seamless traffic handling as the system grows.
+- The pipeline can be configured to automatically scale the infrastructure based on the number of nodes or service demand. This allows the system to adapt to varying traffic levels.
 
-### **HAProxy Configuration Tuning:**
-- The pipeline deploys HAProxy with advanced configurations such as:
-  - **SSL termination** for secure HTTPS traffic.
-  - **HTTP2 support** for faster, more efficient web communication.
-  - **Session persistence** for routing users to the same server during their session.
+### **HAProxy Customization:**
+- **SSL Termination:** HAProxy can be configured to terminate SSL traffic, offloading the SSL decryption process from backend servers.
+- **Advanced Load Balancing:** The pipeline supports advanced load balancing strategies such as round-robin, least connections, or IP hash-based balancing to optimize traffic distribution.
   
 ### **Health Checks:**
-- After deployment, the pipeline performs automated health checks to verify that HAProxy and the infrastructure are functioning as expected. This includes checking HAProxy’s load balancing, SSL configuration, and overall health of the services.
+- After deployment, the pipeline performs automated health checks to ensure that HAProxy is functioning as expected, with all nodes operational and correctly distributing traffic.
 
 ---
 
 ## 8. FAQ
 
-- **Q: How do I ensure high availability for HAProxy?**
-   - The pipeline deploys HAProxy across multiple availability zones, ensuring redundancy and automatic failover in case of node or zone failure.
+- **Q: How do I provide a custom `haproxy.cfg`?**
+   - Provide the URL to your **GitHub repository** containing the `haproxy.cfg` file during pipeline initiation. The pipeline will automatically fetch the file from the specified repository.
 
-- **Q: How fast will the deployment process be?**
-   - The pipeline is optimized for speed. Deployments are typically completed within minutes, ensuring minimal disruption and fast time-to-service.
+- **Q: How do I ensure high availability for HAProxy?**
+   - The pipeline deploys HAProxy across multiple availability zones, ensuring redundancy and automatic failover if a zone or node fails.
+
+- **Q: How do I retain a fixed IP address for my VM?**
+   - If you want to retain the VM’s fixed IP address, provide the **VM Port ID** during pipeline initiation. The pipeline will use Terraform to import the port and ensure the IP address is preserved.
+
+- **Q: Can I customize the security settings of HAProxy?**
+   - Yes, by providing your own **GitHub repository** with custom configurations, you can apply any security settings you need.
 
 - **Q: How do I troubleshoot a failed build?**
-   - Review the Jenkins logs to identify any issues with HAProxy, SELinux, or node deployment. Logs will provide details to help resolve any issues related to performance or availability.
-
-- **Q: Can I customize HAProxy’s performance tuning?**
-   - Yes, the pipeline can be configured to apply specific performance optimizations for HAProxy. Contact the administrator if you need to modify these settings.
+   - Review the Jenkins logs to identify any issues with fetching your custom configuration files, compiling HAProxy, or deploying the infrastructure. Logs provide detailed information for troubleshooting.
 
 ---
 
 ## 9. Conclusion
 
-The Jenkins pipeline offers a fast, efficient, and highly resilient solution for deploying **HAProxy** in a secure environment. With automatic high availability, minimal downtime, and performance-focused tuning, this pipeline ensures that HAProxy is deployed quickly and reliably across multiple availability zones.
+The Jenkins pipeline offers a fast, efficient, and highly resilient solution for deploying **HAProxy** with a customizable configuration. With the ability to provide a **GitHub repository** for configuration files, **fixed IP retention** via **VM Port ID**, and options to specify **node names** and **security groups**, this pipeline ensures that HAProxy is deployed quickly, securely, and reliably across multiple availability zones.
 
