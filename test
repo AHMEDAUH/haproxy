@@ -2,6 +2,10 @@
 agent_version: "latest"  # Default version, can be overridden
 agent_url: "https://download.instant-agent.com/agent.rpm"  # Replace with the actual URL
 
+# Configuration Parameters for the Agent
+agent_config_file: "/etc/instant-agent/config.yaml"
+agent_api_key: "your-api-key"  # Set your API key here
+agent_endpoint: "https://your-endpoint.com"  # Set your endpoint here
 
 
 
@@ -30,22 +34,33 @@ agent_url: "https://download.instant-agent.com/agent.rpm"  # Replace with the ac
     state: absent
   become: true
 
+- name: Create or update the Instant Agent configuration file
+  template:
+    src: "config.yaml.j2"
+    dest: "{{ agent_config_file }}"
+    mode: '0644'
+  become: true
+  notify: Restart Instant Agent service
 
-
-
----
-- name: Restart Instant Agent service
+- name: Ensure the Instant Agent service is enabled and running
   service:
     name: instant-agent
-    state: restarted
+    state: started
+    enabled: true
   become: true
 
 
 
 
----
-- name: Install Instant Agent on RHEL 8
-  hosts: rhel8_servers
-  become: true
-  roles:
-    - instant-agent
+# Instant Agent Configuration
+
+api_key: "{{ agent_api_key }}"
+endpoint: "{{ agent_endpoint }}"
+log_level: "info"
+# Add other configuration parameters as required by the agent
+
+# Optional: If the agent requires any other configurations, add them here
+# For example:
+# custom_param: "{{ custom_param_value }}"
+
+
