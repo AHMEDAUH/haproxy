@@ -1,78 +1,78 @@
-# Home Page: Infrastructure Automation Pipelines
+# Page d'Accueil : Pipelines d'Automatisation de l'Infrastructure
 
-## Overview
+## Vue d'Ensemble
 
-Welcome to our **Infrastructure Automation Pipelines** documentation. This repository contains two major Jenkins pipelines designed to automate key infrastructure tasks. These pipelines allow you to build custom OS images and deploy HAProxy with high availability and performance. Whether you're working on building OS images for your infrastructure or deploying HAProxy in a highly resilient environment, our pipelines are designed for speed, customization, and flexibility.
+Bienvenue dans la documentation de nos **Pipelines d'Automatisation de l'Infrastructure**. Ce référentiel contient deux pipelines Jenkins majeurs conçus pour automatiser des tâches clés d'infrastructure. Ces pipelines vous permettent de créer des images OS personnalisées et de déployer HAProxy avec une haute disponibilité et des performances optimisées. Que vous travailliez sur la création d'images OS pour votre infrastructure ou sur le déploiement de HAProxy dans un environnement hautement résilient, nos pipelines sont conçus pour la vitesse, la personnalisation et la flexibilité.
 
-### Pipelines Overview:
-1. **Image OS Builder Pipeline**  
-   - Build custom OS images based on the latest release, with the flexibility to add custom derivations and configurations. This pipeline simplifies the process of creating tailored OS images for your needs.
-   - **Key Features:**  
-     - Custom OS image builds with the latest release.
-     - Flexibility for custom derivations based on user requirements.
-     - Integration with GitHub for source code management.
-   
-2. **HAProxy Deployment Pipeline**  
-   - Automate the deployment of HAProxy with high availability, resiliency, and performance. This pipeline compiles HAProxy from source and allows users to provide custom configurations through GitHub repositories. It supports VM port ID import to retain fixed IP addresses using Terraform.
-   - **Key Features:**  
-     - HAProxy compiled from source for optimization and performance.
-     - Custom HAProxy configurations via GitHub repository.
-     - Supports **multi-AZ deployment**, **high availability**, and **load balancing**.
-     - VM port ID support to retain fixed IP addresses during deployment.
+### Vue d'Ensemble des Pipelines :
+1. **Pipeline de Création d'Image OS**  
+   - Créez des images OS personnalisées basées sur la dernière version, avec la flexibilité d'ajouter des dérivations et des configurations personnalisées. Ce pipeline simplifie le processus de création d'images OS adaptées à vos besoins.
+   - **Caractéristiques principales :**  
+     - Création d'images OS personnalisées avec la dernière version.
+     - Flexibilité pour les dérivations personnalisées basées sur les exigences des utilisateurs.
+     - Intégration avec GitHub pour la gestion du code source.
 
----
-
-## Quick Links
-
-- [**Image OS Builder Pipeline Documentation**](#image-os-builder-pipeline-documentation)  
-  Learn how to create custom OS images based on the latest release and tailor them to your needs with custom derivations.
-  
-- [**HAProxy Deployment Pipeline Documentation**](#haproxy-deployment-pipeline-documentation)  
-  Automate the deployment of HAProxy with performance, high availability, and resiliency in mind, using customizable configurations and retaining fixed IP addresses.
+2. **Pipeline de Déploiement HAProxy**  
+   - Automatisez le déploiement de HAProxy avec une haute disponibilité, résilience et performance. Ce pipeline compile HAProxy à partir de la source et permet aux utilisateurs de fournir des configurations personnalisées via des dépôts GitHub. Il prend en charge l'importation de l'ID de port VM pour conserver les adresses IP fixes via Terraform.
+   - **Caractéristiques principales :**  
+     - HAProxy compilé à partir de la source pour optimiser la performance.
+     - Configurations personnalisées de HAProxy via le dépôt GitHub.
+     - Prise en charge du **déploiement multi-AZ**, de la **haute disponibilité** et du **répartition de charge**.
+     - Prise en charge de l'ID de port VM pour conserver les adresses IP fixes pendant le déploiement.
 
 ---
 
-## How to Use the Pipelines
+## Liens Rapides
 
-These pipelines are designed to make infrastructure management more efficient and flexible. Here's a high-level overview of how they work:
+- [**Documentation du Pipeline de Création d'Image OS**](#documentation-pipeline-image-os-builder)  
+  Apprenez à créer des images OS personnalisées basées sur la dernière version et à les adapter à vos besoins avec des dérivations personnalisées.
 
-### Image OS Builder Pipeline
-1. **Input Parameters:** Provide the account credentials and desired custom derivations for the OS image.
-2. **Build Process:** The pipeline builds a custom OS image based on the latest release, including any required modifications.
-3. **Output:** A custom OS image ready for deployment.
-
-### HAProxy Deployment Pipeline
-1. **Input Parameters:** Provide the GitHub repository URL for your custom configuration files (like `haproxy.cfg`), along with security settings, node name, ports, and optionally the VM port ID for fixed IP retention.
-2. **Build Process:** The pipeline deploys HAProxy with multi-AZ support, ensuring high availability and resiliency, and applies your custom configurations.
-3. **Output:** A fully configured HAProxy load balancer, deployed with optimized performance and minimal downtime.
+- [**Documentation du Pipeline de Déploiement HAProxy**](#documentation-pipeline-haproxy)  
+  Automatisez le déploiement de HAProxy avec des performances, une haute disponibilité et une résilience en tenant compte de vos configurations personnalisées et de la conservation des adresses IP fixes.
 
 ---
 
-## Benefits
+## Comment Utiliser les Pipelines
 
-- **Speed & Efficiency:** Both pipelines are optimized for minimal downtime and fast deployment, ensuring that your systems are up and running as quickly as possible.
-- **Customizability:** With both pipelines, you can tailor the deployment and configuration process to suit your specific needs, whether that's creating a custom OS image or configuring HAProxy for maximum performance.
-- **Resilience & High Availability:** Both pipelines are designed with **high availability** in mind, ensuring that your infrastructure is robust and resistant to failures.
-  
----
+Ces pipelines sont conçus pour rendre la gestion de l'infrastructure plus efficace et flexible. Voici une vue d'ensemble de leur fonctionnement :
 
-## Contact and Support
+### Pipeline de Création d'Image OS
+1. **Paramètres d'Entrée :** Fournissez les informations d'identification du compte et les dérivations personnalisées souhaitées pour l'image OS.
+2. **Processus de Création :** Le pipeline crée une image OS personnalisée basée sur la dernière version, y compris toutes les modifications nécessaires.
+3. **Sortie :** Une image OS personnalisée prête à être déployée.
 
-For further assistance or questions regarding the usage of these pipelines, feel free to contact the **DevOps Team**.
-
----
-
-## 1. Image OS Builder Pipeline Documentation
-
-[**Image OS Builder Pipeline Documentation**](#)  
-Learn how to build custom OS images based on the latest release and tailor them to your needs with custom derivations. This section will guide you through setting up and using the Image OS Builder pipeline.
+### Pipeline de Déploiement HAProxy
+1. **Paramètres d'Entrée :** Fournissez l'URL du dépôt GitHub contenant vos fichiers de configuration personnalisés (par exemple, `haproxy.cfg`), ainsi que les paramètres de sécurité, le nom du nœud, les ports, et l'ID de port VM optionnel pour conserver les IP fixes.
+2. **Processus de Déploiement :** Le pipeline déploie HAProxy avec un support multi-AZ, garantissant une haute disponibilité et résilience, et applique vos configurations personnalisées.
+3. **Sortie :** Un HAProxy entièrement configuré et déployé avec des performances optimisées et un temps d'indisponibilité minimal.
 
 ---
 
-## 2. HAProxy Deployment Pipeline Documentation
+## Avantages
 
-[**HAProxy Deployment Pipeline Documentation**](#)  
-Deploy HAProxy with high availability, resiliency, and performance. This documentation explains how to use the pipeline, configure HAProxy with your custom settings, and ensure minimal downtime during deployment.
+- **Vitesse et Efficacité :** Les deux pipelines sont optimisés pour un temps d'indisponibilité minimal et un déploiement rapide, garantissant que vos systèmes sont opérationnels aussi vite que possible.
+- **Personnalisation :** Avec ces pipelines, vous pouvez adapter le processus de déploiement et de configuration à vos besoins spécifiques, que ce soit pour créer une image OS personnalisée ou configurer HAProxy pour des performances maximales.
+- **Résilience et Haute Disponibilité :** Ces pipelines sont conçus avec la **haute disponibilité** en tête, garantissant que votre infrastructure soit robuste et résistante aux pannes.
+
+---
+
+## Contact et Support
+
+Pour toute assistance supplémentaire ou question concernant l'utilisation de ces pipelines, n'hésitez pas à contacter l'**équipe DevOps**.
+
+---
+
+## 1. Documentation du Pipeline de Création d'Image OS
+
+[**Documentation du Pipeline de Création d'Image OS**](#)  
+Apprenez à créer des images OS personnalisées basées sur la dernière version et à les adapter à vos besoins avec des dérivations personnalisées. Cette section vous guidera dans la mise en place et l'utilisation du pipeline de création d'image OS.
+
+---
+
+## 2. Documentation du Pipeline de Déploiement HAProxy
+
+[**Documentation du Pipeline de Déploiement HAProxy**](#)  
+Déployez HAProxy avec haute disponibilité, résilience et performance. Cette documentation explique comment utiliser le pipeline, configurer HAProxy avec vos paramètres personnalisés, et garantir un déploiement sans temps d'arrêt.
 
 ---
 
