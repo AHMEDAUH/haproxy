@@ -1,78 +1,51 @@
-# Page d'Accueil : Pipelines d'Automatisation de l'Infrastructure
+---
+agent_version: "latest"  # Default version, can be overridden
+agent_url: "https://download.instant-agent.com/agent.rpm"  # Replace with the actual URL
 
-## Vue d'Ensemble
 
-Bienvenue dans la documentation de nos **Pipelines d'Automatisation de l'Infrastructure**. Ce référentiel contient deux pipelines Jenkins majeurs conçus pour automatiser des tâches clés d'infrastructure. Ces pipelines vous permettent de créer des images OS personnalisées et de déployer HAProxy avec une haute disponibilité et des performances optimisées. Que vous travailliez sur la création d'images OS pour votre infrastructure ou sur le déploiement de HAProxy dans un environnement hautement résilient, nos pipelines sont conçus pour la vitesse, la personnalisation et la flexibilité.
 
-### Vue d'Ensemble des Pipelines :
-1. **Pipeline de Création d'Image OS**  
-   - Créez des images OS personnalisées basées sur la dernière version, avec la flexibilité d'ajouter des dérivations et des configurations personnalisées. Ce pipeline simplifie le processus de création d'images OS adaptées à vos besoins.
-   - **Caractéristiques principales :**  
-     - Création d'images OS personnalisées avec la dernière version.
-     - Flexibilité pour les dérivations personnalisées basées sur les exigences des utilisateurs.
-     - Intégration avec GitHub pour la gestion du code source.
-
-2. **Pipeline de Déploiement HAProxy**  
-   - Automatisez le déploiement de HAProxy avec une haute disponibilité, résilience et performance. Ce pipeline compile HAProxy à partir de la source et permet aux utilisateurs de fournir des configurations personnalisées via des dépôts GitHub. Il prend en charge l'importation de l'ID de port VM pour conserver les adresses IP fixes via Terraform.
-   - **Caractéristiques principales :**  
-     - HAProxy compilé à partir de la source pour optimiser la performance.
-     - Configurations personnalisées de HAProxy via le dépôt GitHub.
-     - Prise en charge du **déploiement multi-AZ**, de la **haute disponibilité** et du **répartition de charge**.
-     - Prise en charge de l'ID de port VM pour conserver les adresses IP fixes pendant le déploiement.
 
 ---
+- name: Ensure system is updated
+  dnf:
+    name: '*'
+    state: latest
+  become: true
 
-## Liens Rapides
+- name: Download the Instant Agent RPM package
+  get_url:
+    url: "{{ agent_url }}"
+    dest: "/tmp/instant-agent.rpm"
+  become: true
 
-- [**Documentation du Pipeline de Création d'Image OS**](#documentation-pipeline-image-os-builder)  
-  Apprenez à créer des images OS personnalisées basées sur la dernière version et à les adapter à vos besoins avec des dérivations personnalisées.
+- name: Install Instant Agent
+  dnf:
+    name: "/tmp/instant-agent.rpm"
+    state: present
+  become: true
 
-- [**Documentation du Pipeline de Déploiement HAProxy**](#documentation-pipeline-haproxy)  
-  Automatisez le déploiement de HAProxy avec des performances, une haute disponibilité et une résilience en tenant compte de vos configurations personnalisées et de la conservation des adresses IP fixes.
+- name: Clean up RPM package
+  file:
+    path: "/tmp/instant-agent.rpm"
+    state: absent
+  become: true
 
----
 
-## Comment Utiliser les Pipelines
 
-Ces pipelines sont conçus pour rendre la gestion de l'infrastructure plus efficace et flexible. Voici une vue d'ensemble de leur fonctionnement :
-
-### Pipeline de Création d'Image OS
-1. **Paramètres d'Entrée :** Fournissez les informations d'identification du compte et les dérivations personnalisées souhaitées pour l'image OS.
-2. **Processus de Création :** Le pipeline crée une image OS personnalisée basée sur la dernière version, y compris toutes les modifications nécessaires.
-3. **Sortie :** Une image OS personnalisée prête à être déployée.
-
-### Pipeline de Déploiement HAProxy
-1. **Paramètres d'Entrée :** Fournissez l'URL du dépôt GitHub contenant vos fichiers de configuration personnalisés (par exemple, `haproxy.cfg`), ainsi que les paramètres de sécurité, le nom du nœud, les ports, et l'ID de port VM optionnel pour conserver les IP fixes.
-2. **Processus de Déploiement :** Le pipeline déploie HAProxy avec un support multi-AZ, garantissant une haute disponibilité et résilience, et applique vos configurations personnalisées.
-3. **Sortie :** Un HAProxy entièrement configuré et déployé avec des performances optimisées et un temps d'indisponibilité minimal.
-
----
-
-## Avantages
-
-- **Vitesse et Efficacité :** Les deux pipelines sont optimisés pour un temps d'indisponibilité minimal et un déploiement rapide, garantissant que vos systèmes sont opérationnels aussi vite que possible.
-- **Personnalisation :** Avec ces pipelines, vous pouvez adapter le processus de déploiement et de configuration à vos besoins spécifiques, que ce soit pour créer une image OS personnalisée ou configurer HAProxy pour des performances maximales.
-- **Résilience et Haute Disponibilité :** Ces pipelines sont conçus avec la **haute disponibilité** en tête, garantissant que votre infrastructure soit robuste et résistante aux pannes.
 
 ---
+- name: Restart Instant Agent service
+  service:
+    name: instant-agent
+    state: restarted
+  become: true
 
-## Contact et Support
 
-Pour toute assistance supplémentaire ou question concernant l'utilisation de ces pipelines, n'hésitez pas à contacter l'**équipe DevOps**.
 
----
-
-## 1. Documentation du Pipeline de Création d'Image OS
-
-[**Documentation du Pipeline de Création d'Image OS**](#)  
-Apprenez à créer des images OS personnalisées basées sur la dernière version et à les adapter à vos besoins avec des dérivations personnalisées. Cette section vous guidera dans la mise en place et l'utilisation du pipeline de création d'image OS.
 
 ---
-
-## 2. Documentation du Pipeline de Déploiement HAProxy
-
-[**Documentation du Pipeline de Déploiement HAProxy**](#)  
-Déployez HAProxy avec haute disponibilité, résilience et performance. Cette documentation explique comment utiliser le pipeline, configurer HAProxy avec vos paramètres personnalisés, et garantir un déploiement sans temps d'arrêt.
-
----
-
+- name: Install Instant Agent on RHEL 8
+  hosts: rhel8_servers
+  become: true
+  roles:
+    - instant-agent
