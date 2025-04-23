@@ -1,0 +1,347 @@
+# Configuration Complète pour un Cluster HAProxy Multi-Régions Résilient
+
+Voici une configuration complète pour mettre en place un cluster HAProxy hautement résilient sur plusieurs régions, avec synchronisation des états et gestion de la résilience.
+
+## 1. Architecture Globale
+
+```
+[Region A]                   [Region B]                   [Region C]
+│                            │                            │
+├── HAProxy Node 1 (Active)  ├── HAProxy Node 1 (Active)  ├── HAProxy Node 1 (Active)
+├── HAProxy Node 2 (Standby) ├── HAProxy Node 2 (Standby) ├── HAProxy Node 2 (Standby)
+└── Keepalived VIP           └── Keepalived VIP           └── Keepalived VIP
+```
+
+## 2. Configuration HAProxy Principale (`/etc/haproxy/haproxy.cfg`)
+
+```haproxy
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 100000
+    tune.ssl.default-dh-param 2048
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256
+    
+    # Configuration de synchronisation entre pairs
+    peers mypeers
+        peer haproxy-regionA-1 10.0.1.1:10000
+        peer haproxy-regionA-2 10.0.1.2:10000
+        peer haproxy-regionB-1 10.1.1.1:10000
+        peer haproxy-regionB-2 10.1.1.2:10000
+        peer haproxy-regionC-1 10.2.1.1:10000
+        peer haproxy-regionC-2 10.2.1.2:10000
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    option redispatch
+    option tcplog
+    timeout connect 10s
+    timeout client 30s
+    timeout server 30s
+    timeout check 5s
+    retries 3
+
+frontend global_http
+    bind :80
+    bind :443 ssl crt /etc/ssl/certs/global.pem alpn h2,http/1.1
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
+    redirect scheme https if !{ ssl_fc }
+    
+    # Routing intelligent basé sur la région
+    acl region_a hdr_sub(host) -i .region-a.
+    acl region_b hdr_sub(host) -i .region-b.
+    acl region_c hdr_sub(host) -i .region-c.
+    
+    use_backend be_region_a if region_a
+    use_backend be_region_b if region_b
+    use_backend be_region_c if region_c
+    default_backend be_global
+
+backend be_region_a
+    balance leastconn
+    stick-table type string len 32 size 100k expire 30m peers mypeers
+    stick on src
+    
+    option httpchk GET /health
+    http-check expect status 200
+    
+    server s1 10.0.2.1:80 check inter 2s fall 3 rise 2
+    server s2 10.0.2.2:80 check inter 2s fall 3 rise 2 backup
+
+backend be_region_b
+    balance leastconn
+    stick-table type string len 32 size 100k expire 30m peers mypeers
+    stick on src
+    
+    option httpchk GET /health
+    http-check expect status 200
+    
+    server s1 10.1.2.1:80 check inter 2s fall 3 rise 2
+    server s2 10.1.2.2:80 check inter 2s fall 3 rise 2 backup
+
+backend be_region_c
+    balance leastconn
+    stick-table type string len 32 size 100k expire 30m peers mypeers
+    stick on src
+    
+    option httpchk GET /health
+    http-check expect status 200
+    
+    server s1 10.2.2.1:80 check inter 2s fall 3 rise 2
+    server s2 10.2.2.2:80 check inter 2s fall 3 rise 2 backup
+
+backend be_global
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    
+    # Serveurs de toutes les régions comme backup
+    server regionA_s1 10.0.2.1:80 check inter 2s fall 3 rise 2
+    server regionA_s2 10.0.2.2:80 check inter 2s fall 3 rise 2
+    server regionB_s1 10.1.2.1:80 check inter 2s fall 3 rise 2
+    server regionB_s2 10.1.2.2:80 check inter 2s fall 3 rise 2
+    server regionC_s1 10.2.2.1:80 check inter 2s fall 3 rise 2
+    server regionC_s2 10.2.2.2:80 check inter 2s fall 3 rise 2
+
+listen stats
+    bind :9000
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if TRUE
+    stats show-legends
+    stats show-node
+```
+
+## 3. Configuration Keepalived (`/etc/keepalived/keepalived.conf`)
+
+```conf
+vrrp_script chk_haproxy {
+    script "killall -0 haproxy"
+    interval 2
+    weight 2
+    fall 2
+    rise 2
+}
+
+vrrp_instance VI_1 {
+    state MASTER          # Sur le nœud secondaire, mettre BACKUP
+    interface eth0
+    virtual_router_id 51  # Doit être unique par région
+    priority 101          # 101 sur master, 100 sur backup
+    
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass secretpassword
+    }
+    
+    virtual_ipaddress {
+        10.0.1.100/24     # VIP pour la région A
+    }
+    
+    track_script {
+        chk_haproxy
+    }
+    
+    notify_master "/etc/keepalived/master.sh"
+    notify_backup "/etc/keepalived/backup.sh"
+    notify_fault "/etc/keepalived/fault.sh"
+}
+```
+
+## 4. Scripts de Synchronisation et Gestion d'État
+
+### Script de synchronisation de configuration (`/usr/local/bin/sync_haproxy_conf.sh`)
+
+```bash
+#!/bin/bash
+
+# Variables
+CONF_DIR="/etc/haproxy"
+PEERS=("haproxy-regionA-2" "haproxy-regionB-1" "haproxy-regionB-2" "haproxy-regionC-1" "haproxy-regionC-2")
+RSYNC_OPTS="-az --delete --timeout=10"
+
+# Synchroniser la configuration
+for peer in "${PEERS[@]}"; do
+    rsync $RSYNC_OPTS $CONF_DIR/ $peer:$CONF_DIR/
+    if [ $? -eq 0 ]; then
+        logger "HAProxy config synced to $peer"
+    else
+        logger "Failed to sync HAProxy config to $peer"
+    fi
+done
+
+# Recharger HAProxy si la configuration a changé
+if ! haproxy -c -f $CONF_DIR/haproxy.cfg > /dev/null; then
+    logger "Invalid HAProxy configuration, not reloading"
+    exit 1
+fi
+
+systemctl reload haproxy
+```
+
+### Script de basculement Keepalived (`/etc/keepalived/master.sh`)
+
+```bash
+#!/bin/bash
+
+# Lorsqu'on devient master
+logger "Keepalived transition to MASTER state"
+
+# Activer le trafic sur le VIP
+ip addr add 10.0.1.100/24 dev eth0 || true
+
+# Forcer une vérification des serveurs backend
+echo "show servers state" | socat /run/haproxy/admin.sock - > /tmp/servers_state
+while read -r line; do
+    if [[ $line =~ ^[0-9] ]]; then
+        backend=$(echo $line | awk '{print $1}')
+        server=$(echo $line | awk '{print $2}')
+        echo "enable server $backend/$server" | socat /run/haproxy/admin.sock -
+    fi
+done < /tmp/servers_state
+
+# Synchroniser la configuration
+/usr/local/bin/sync_haproxy_conf.sh
+
+exit 0
+```
+
+## 5. Surveillance et Auto-Réparation
+
+### Configuration Prometheus pour HAProxy (`/etc/prometheus/haproxy.yml`)
+
+```yaml
+scrape_configs:
+  - job_name: 'haproxy'
+    static_configs:
+      - targets: 
+        - 'haproxy-regionA-1:9101'
+        - 'haproxy-regionA-2:9101'
+        - 'haproxy-regionB-1:9101'
+        - 'haproxy-regionB-2:9101'
+        - 'haproxy-regionC-1:9101'
+        - 'haproxy-regionC-2:9101'
+    metrics_path: '/metrics'
+    params:
+      scrape: ['haproxy']
+```
+
+### Règles d'alerte Prometheus (`/etc/prometheus/alerts.yml`)
+
+```yaml
+groups:
+- name: haproxy-alerts
+  rules:
+  - alert: HaproxyBackendDown
+    expr: sum(haproxy_server_up) by (backend) < count(haproxy_server_up) by (backend)
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "HAProxy backend {{ $labels.backend }} has {{ $value }} down servers"
+      description: "{{ $labels.instance }} has {{ $value }} servers down in backend {{ $labels.backend }}"
+  
+  - alert: HaproxyPeerDisconnected
+    expr: haproxy_peers_connection_status == 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "HAProxy peer connection down (instance {{ $labels.instance }})"
+      description: "HAProxy peer {{ $labels.peer }} is disconnected for 2 minutes"
+```
+
+## 6. Déploiement Automatisé avec Ansible
+
+Structure de répertoire:
+```
+haproxy-cluster/
+├── group_vars/
+│   ├── all.yml
+│   ├── region_a.yml
+│   ├── region_b.yml
+│   └── region_c.yml
+├── roles/
+│   └── haproxy/
+│       ├── tasks/
+│       │   └── main.yml
+│       ├── templates/
+│       │   ├── haproxy.cfg.j2
+│       │   └── keepalived.conf.j2
+│       └── handlers/
+│           └── main.yml
+└── site.yml
+```
+
+Exemple de playbook principal (`site.yml`):
+```yaml
+- hosts: haproxy_region_a
+  vars_files:
+    - group_vars/all.yml
+    - group_vars/region_a.yml
+  roles:
+    - haproxy
+
+- hosts: haproxy_region_b
+  vars_files:
+    - group_vars/all.yml
+    - group_vars/region_b.yml
+  roles:
+    - haproxy
+
+- hosts: haproxy_region_c
+  vars_files:
+    - group_vars/all.yml
+    - group_vars/region_c.yml
+  roles:
+    - haproxy
+```
+
+## 7. Tests de Résilience
+
+Script de test (`/usr/local/bin/test_resilience.sh`):
+```bash
+#!/bin/bash
+
+# Test de basculement intra-région
+echo "Testing intra-region failover..."
+sudo systemctl stop haproxy on backup-node
+sleep 5
+curl -I http://vip-region-a/health
+sudo systemctl start haproxy on backup-node
+
+# Test de basculement inter-régions
+echo "Testing inter-region failover..."
+for region in region-a region-b region-c; do
+    ansible $region -a "sudo systemctl stop haproxy"
+    sleep 10
+    curl -I http://global-endpoint/health
+    ansible $region -a "sudo systemctl start haproxy"
+    sleep 30
+done
+
+# Test de synchronisation des sessions
+echo "Testing session synchronization..."
+SESSION_ID=$(curl -s -I http://region-a-endpoint | grep -i 'Set-Cookie' | awk '{print $2}')
+curl -I -H "Cookie: $SESSION_ID" http://region-b-endpoint
+```
+
+Cette configuration complète fournit:
+1. Synchronisation des états de session entre toutes les régions
+2. Basculement automatique intra et inter-régions
+3. Surveillance complète avec alertes
+4. Gestion centralisée de la configuration
+5. Tests automatisés de résilience
+
+Pour l'implémenter, adaptez les adresses IP et les noms d'hôte à votre infrastructure spécifique.
