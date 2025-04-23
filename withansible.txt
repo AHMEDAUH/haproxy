@@ -1,0 +1,347 @@
+Voici une configuration Ansible complète pour déployer et gérer votre cluster HAProxy multi-régions :
+
+## Structure du projet Ansible
+
+```
+haproxy-multi-region/
+├── ansible.cfg
+├── inventory/
+│   ├── production/
+│   │   ├── region_a.yml
+│   │   ├── region_b.yml
+│   │   └── region_c.yml
+│   └── hosts.ini
+├── group_vars/
+│   ├── all.yml
+│   ├── region_a.yml
+│   ├── region_b.yml
+│   └── region_c.yml
+├── roles/
+│   └── haproxy/
+│       ├── tasks/
+│       │   ├── main.yml
+│       │   ├── install.yml
+│       │   ├── configure.yml
+│       │   ├── service.yml
+│       │   └── peers.yml
+│       ├── handlers/
+│       │   └── main.yml
+│       ├── templates/
+│       │   ├── haproxy.cfg.j2
+│       │   ├── keepalived.conf.j2
+│       │   ├── master.sh.j2
+│       │   └── backup.sh.j2
+│       └── vars/
+│           └── main.yml
+└── site.yml
+```
+
+## Fichiers principaux
+
+### ansible.cfg
+```ini
+[defaults]
+inventory = inventory/
+roles_path = roles/
+retry_files_enabled = False
+host_key_checking = False
+gathering = smart
+fact_caching = jsonfile
+fact_caching_connection = /tmp/ansible_facts
+fact_caching_timeout = 3600
+
+[privilege_escalation]
+become = True
+become_method = sudo
+become_user = root
+become_ask_pass = False
+```
+
+### inventory/production/region_a.yml
+```yaml
+all:
+  children:
+    haproxy_region_a:
+      hosts:
+        haproxy_region_a_node1:
+          ansible_host: 10.0.1.1
+          haproxy_node_id: 1
+          keepalived_state: MASTER
+          keepalived_priority: 101
+        haproxy_region_a_node2:
+          ansible_host: 10.0.1.2
+          haproxy_node_id: 2
+          keepalived_state: BACKUP
+          keepalived_priority: 100
+```
+
+### group_vars/all.yml
+```yaml
+---
+# Paramètres communs à toutes les régions
+haproxy_version: 2.6.6
+haproxy_user: haproxy
+haproxy_group: haproxy
+
+keepalived_virtual_router_id: 51
+keepalived_interface: eth0
+keepalived_auth_pass: "secretpassword"
+
+# Liste des pairs HAProxy
+haproxy_peers:
+  - { name: "haproxy_region_a_node1", ip: "10.0.1.1", port: 10000 }
+  - { name: "haproxy_region_a_node2", ip: "10.0.1.2", port: 10000 }
+  - { name: "haproxy_region_b_node1", ip: "10.1.1.1", port: 10000 }
+  - { name: "haproxy_region_b_node2", ip: "10.1.1.2", port: 10000 }
+  - { name: "haproxy_region_c_node1", ip: "10.2.1.1", port: 10000 }
+  - { name: "haproxy_region_c_node2", ip: "10.2.1.2", port: 10000 }
+
+# Configuration des backends
+haproxy_backends:
+  - name: be_region_a
+    servers:
+      - { name: s1, ip: "10.0.2.1", port: 80 }
+      - { name: s2, ip: "10.0.2.2", port: 80, backup: true }
+  - name: be_region_b
+    servers:
+      - { name: s1, ip: "10.1.2.1", port: 80 }
+      - { name: s2, ip: "10.1.2.2", port: 80, backup: true }
+  - name: be_region_c
+    servers:
+      - { name: s1, ip: "10.2.2.1", port: 80 }
+      - { name: s2, ip: "10.2.2.2", port: 80, backup: true }
+```
+
+### group_vars/region_a.yml
+```yaml
+---
+# Configuration spécifique à la région A
+haproxy_frontend_ip: "10.0.1.100"
+keepalived_virtual_router_id: 51
+region_name: "region_a"
+```
+
+### roles/haproxy/tasks/main.yml
+```yaml
+---
+- name: Include installation tasks
+  include_tasks: install.yml
+
+- name: Include configuration tasks
+  include_tasks: configure.yml
+
+- name: Include service management tasks
+  include_tasks: service.yml
+
+- name: Configure HAProxy peers
+  include_tasks: peers.yml
+```
+
+### roles/haproxy/tasks/install.yml
+```yaml
+---
+- name: Install dependencies
+  apt:
+    name: ["software-properties-common", "rsync", "socat", "keepalived"]
+    state: present
+    update_cache: yes
+  when: ansible_os_family == 'Debian'
+
+- name: Add HAProxy repository
+  apt_repository:
+    repo: "ppa:vbernat/haproxy-{{ haproxy_version.split('.')[0] }}.{{ haproxy_version.split('.')[1] }}"
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install HAProxy
+  apt:
+    name: haproxy={{ haproxy_version }}-*
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Install on RedHat
+  yum:
+    name: haproxy
+    state: present
+  when: ansible_os_family == 'RedHat'
+```
+
+### roles/haproxy/tasks/configure.yml
+```yaml
+---
+- name: Create HAProxy configuration directory
+  file:
+    path: /etc/haproxy
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: 0750
+
+- name: Deploy HAProxy main configuration
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: 0640
+  notify: Reload HAProxy
+
+- name: Deploy Keepalived configuration
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    mode: 0644
+  notify: Restart Keepalived
+
+- name: Deploy Keepalived scripts
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/keepalived/{{ item }}"
+    mode: 0755
+  loop:
+    - master.sh
+    - backup.sh
+```
+
+### roles/haproxy/templates/haproxy.cfg.j2
+```jinja2
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    user {{ haproxy_user }}
+    group {{ haproxy_group }}
+    daemon
+    maxconn 100000
+    tune.ssl.default-dh-param 2048
+
+    # Configuration des pairs
+    peers mypeers
+{% for peer in haproxy_peers %}
+        peer {{ peer.name }} {{ peer.ip }}:{{ peer.port }}
+{% endfor %}
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    option redispatch
+    timeout connect 10s
+    timeout client 30s
+    timeout server 30s
+    timeout check 5s
+    retries 3
+
+frontend global_http
+    bind :80
+    bind :443 ssl crt /etc/ssl/certs/global.pem
+    redirect scheme https if !{ ssl_fc }
+    
+    acl region_{{ region_name }} hdr_sub(host) -i .{{ region_name }}.
+    use_backend be_{{ region_name }} if region_{{ region_name }}
+    default_backend be_global
+
+{% for backend in haproxy_backends %}
+backend {{ backend.name }}
+    balance leastconn
+    stick-table type string len 32 size 100k expire 30m peers mypeers
+    stick on src
+    
+    option httpchk GET /health
+    http-check expect status 200
+    
+{% for server in backend.servers %}
+    server {{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 3 rise 2{% if server.backup %} backup{% endif %}
+{% endfor %}
+
+{% endfor %}
+
+backend be_global
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    
+{% for backend in haproxy_backends %}
+{% for server in backend.servers %}
+    server {{ backend.name }}_{{ server.name }} {{ server.ip }}:{{ server.port }} check inter 2s fall 3 rise 2
+{% endfor %}
+{% endfor %}
+
+listen stats
+    bind :9000
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if TRUE
+```
+
+### site.yml
+```yaml
+---
+- name: Configure HAProxy cluster in all regions
+  hosts: all
+  gather_facts: yes
+  roles:
+    - haproxy
+
+- name: Synchronize configuration across all nodes
+  hosts: haproxy_region_a_node1
+  tasks:
+    - name: Synchronize HAProxy config to all peers
+      synchronize:
+        src: /etc/haproxy/
+        dest: /etc/haproxy/
+        archive: yes
+        compress: yes
+        recursive: yes
+        delete: yes
+        rsync_opts:
+          - "--timeout=10"
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['all'] }}"
+      when: inventory_hostname != item
+
+    - name: Trigger HAProxy reload on all nodes
+      command: systemctl reload haproxy
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['all'] }}"
+      when: inventory_hostname != item
+```
+
+## Exécution du déploiement
+
+1. Initialiser le dépôt Ansible :
+```bash
+ansible-galaxy init roles/haproxy
+```
+
+2. Vérifier la syntaxe :
+```bash
+ansible-playbook --syntax-check site.yml
+```
+
+3. Tester en dry-run :
+```bash
+ansible-playbook -C site.yml
+```
+
+4. Exécuter le déploiement :
+```bash
+ansible-playbook site.yml
+```
+
+5. Pour synchroniser la configuration après des changements :
+```bash
+ansible-playbook site.yml --tags sync
+```
+
+Cette configuration Ansible complète permet de :
+1. Déployer HAProxy et Keepalived sur tous les nœuds
+2. Configurer automatiquement les pairs entre régions
+3. Maintenir la synchronisation des configurations
+4. Gérer les basculements automatiques
+5. Fournir une interface de monitoring unifiée
+
+Les variables peuvent être ajustées dans les fichiers `group_vars` pour chaque région, et les templates s'adapteront automatiquement à la topologie de votre infrastructure.
