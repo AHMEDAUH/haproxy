@@ -1,0 +1,229 @@
+Voici les fichiers manquants complétant la configuration Ansible :
+
+## 1. Handlers (`roles/haproxy/handlers/main.yml`)
+
+```yaml
+---
+- name: Restart HAProxy
+  systemd:
+    name: haproxy
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: Reload HAProxy
+  systemd:
+    name: haproxy
+    state: reloaded
+
+- name: Restart Keepalived
+  systemd:
+    name: keepalived
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+
+- name: Check HAProxy configuration
+  command: haproxy -c -f /etc/haproxy/haproxy.cfg
+  register: haproxy_check
+  changed_when: false
+  listen: "Restart HAProxy"
+
+- name: Sync peers configuration
+  command: >
+    rsync -az --delete --timeout=10 /etc/haproxy/
+    {{ inventory_hostname }}:/etc/haproxy/
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['all'] }}"
+  when: inventory_hostname != item
+  listen: "Sync HAProxy config"
+```
+
+## 2. Configuration des pairs (`roles/haproxy/tasks/peers.yml`)
+
+```yaml
+---
+- name: Ensure peers directory exists
+  file:
+    path: /etc/haproxy/peers.d
+    state: directory
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: 0750
+
+- name: Generate peers configuration
+  template:
+    src: peers.cfg.j2
+    dest: "/etc/haproxy/peers.d/peers.cfg"
+    owner: "{{ haproxy_user }}"
+    group: "{{ haproxy_group }}"
+    mode: 0640
+  notify: Reload HAProxy
+
+- name: Validate peers connectivity
+  wait_for:
+    host: "{{ item.ip }}"
+    port: "{{ item.port }}"
+    timeout: 5
+    delay: 2
+  loop: "{{ haproxy_peers }}"
+  ignore_errors: yes
+  register: peers_connectivity
+  changed_when: false
+
+- name: Log peers connectivity status
+  debug:
+    msg: "Peer {{ item.item.name }} ({{ item.item.ip }}:{{ item.item.port }}) is {% if item.failed %}unreachable{% else %}reachable{% endif %}"
+  loop: "{{ peers_connectivity.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+```
+
+## 3. Gestion des services (`roles/haproxy/tasks/service.yml`)
+
+```yaml
+---
+- name: Enable HAProxy socket
+  systemd:
+    name: haproxy.socket
+    state: started
+    enabled: yes
+
+- name: Ensure HAProxy service is running
+  systemd:
+    name: haproxy
+    state: started
+    enabled: yes
+    masked: no
+
+- name: Ensure Keepalived service is running
+  systemd:
+    name: keepalived
+    state: started
+    enabled: yes
+    masked: no
+
+- name: Configure firewalld for HAProxy
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: ansible_os_family == 'RedHat'
+
+- name: Configure firewalld for stats
+  firewalld:
+    port: 9000/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+  when: ansible_os_family == 'RedHat'
+
+- name: Configure firewalld for peers
+  firewalld:
+    port: "{{ item.port }}/tcp"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop: "{{ haproxy_peers }}"
+  when: ansible_os_family == 'RedHat'
+
+- name: Configure UFW for HAProxy (Ubuntu)
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - 80
+    - 443
+    - 9000
+  when: ansible_os_family == 'Debian' and ansible_distribution == 'Ubuntu'
+```
+
+## 4. Template des pairs (`roles/haproxy/templates/peers.cfg.j2`)
+
+```jinja2
+peers {{ region_name }}_peers
+{% for peer in haproxy_peers %}
+    peer {{ peer.name }} {{ peer.ip }}:{{ peer.port }}
+{% endfor %}
+```
+
+## 5. Scripts Keepalived complets
+
+### `roles/haproxy/templates/master.sh.j2`
+
+```bash
+#!/bin/bash
+
+logger "[Keepalived] Transition to MASTER state on $(hostname)"
+
+# Configure VIP
+ip addr add {{ haproxy_frontend_ip }}/24 dev {{ keepalived_interface }} || true
+
+# Enable all servers in HAProxy
+echo "enable server be_{{ region_name }}/s1" | socat /run/haproxy/admin.sock -
+echo "enable server be_{{ region_name }}/s2" | socat /run/haproxy/admin.sock -
+
+# Synchronize configuration with peers
+for peer in {% for host in groups['all'] %}{% if host != inventory_hostname %}{{ host }} {% endif %}{% endfor %}; do
+    rsync -az --delete --timeout=10 /etc/haproxy/ $peer:/etc/haproxy/
+    ssh $peer "systemctl reload haproxy"
+done
+
+exit 0
+```
+
+### `roles/haproxy/templates/backup.sh.j2`
+
+```bash
+#!/bin/bash
+
+logger "[Keepalived] Transition to BACKUP state on $(hostname)"
+
+# Remove VIP
+ip addr del {{ haproxy_frontend_ip }}/24 dev {{ keepalived_interface }} || true
+
+# Disable non-backup servers in HAProxy
+echo "disable server be_{{ region_name }}/s1" | socat /run/haproxy/admin.sock -
+
+exit 0
+```
+
+## Intégration complète
+
+Pour utiliser ces nouveaux fichiers, mettez à jour `roles/haproxy/tasks/main.yml` :
+
+```yaml
+---
+- name: Include installation tasks
+  include_tasks: install.yml
+
+- name: Include peers configuration tasks
+  include_tasks: peers.yml
+
+- name: Include service management tasks
+  include_tasks: service.yml
+
+- name: Include main configuration tasks
+  include_tasks: configure.yml
+```
+
+Cette configuration complète offre :
+
+1. **Gestion fine des handlers** pour les rechargements et redémarrages
+2. **Synchronisation automatique des pairs** avec validation de connectivité
+3. **Gestion complète des services** incluant le firewall
+4. **Scripts de basculement** intelligents pour Keepalived
+5. **Monitoring intégré** de l'état des pairs
+
+Les handlers sont déclenchés automatiquement lorsque :
+- La configuration HAProxy change (reload)
+- Keepalived nécessite un redémarrage
+- La synchronisation entre pairs est requise
+
+Les scripts Keepalived gèrent :
+- L'ajout/suppression du VIP
+- L'activation/désactivation des backends
+- La synchronisation inter-nœuds
+- Le logging des événements
