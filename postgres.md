@@ -3,6 +3,7 @@ Philosophie Générale :
 Pour une application critique répartie sur 3 régions, la priorité est la disponibilité et la résilience aux pannes régionales. Cependant, la cohérence des données (éviter la perte de données en cas de bascule) et la performance (surtout pour les écritures) sont en tension directe à cause de la latence inter-régions. L'architecture doit faire des compromis raisonnables.
 Nous utiliserons la réplication native de PostgreSQL (Streaming Replication) et un gestionnaire de haute disponibilité (HA) robuste comme Patroni pour gérer le failover automatique du nœud primaire PostgreSQL. pgpool-II sera utilisé principalement pour le pooling de connexions, la répartition de charge en lecture (load balancing) et comme point d'entrée unique pour les applications, mais pas pour la gestion directe du failover du master PostgreSQL (Patroni s'en chargera bien mieux dans ce contexte complexe).
 Architecture Proposée :
+```bash
        [Application Région 1] ----+                                  +---- [Application Région 2]
                                   |                                  |
                                   v                                  v
@@ -28,7 +29,7 @@ Architecture Proposée :
                       v
  Distributed Configuration Store (DCS) Cluster - ex: etcd
  (État du cluster, Leader Election)
-
+```
 Composants Détaillés :
  * Nœuds PostgreSQL (x3) :
    * Un nœud par région.
