@@ -97,10 +97,13 @@ Considérations Clés pour la Résilience et la Criticité :
  * Tests de Bascule : Testez régulièrement les scénarios de panne (nœud PG, nœud pgpool, instance Patroni/DCS, coupure réseau inter-région) pour vous assurer que le failover fonctionne comme prévu et pour mesurer le temps d'indisponibilité (RTO).
 Cette architecture utilisant Patroni pour la gestion HA de PostgreSQL et pgpool-II pour le pooling/load balancing offre une bonne combinaison de résilience et de fonctionnalités pour un cluster PostgreSQL critique réparti sur trois régions. La complexité est non négligeable, surtout à cause de la distribution géographique et de la nécessité d'un DCS robuste.
 
+-----
+
 Fournir une configuration Ansible complète, prête à l'emploi et testée pour un cluster PostgreSQL HA multi-régions (3 régions sur RHEL 8 avec Patroni, etcd et pgpool-II) est une tâche très complexe qui dépasse la génération de simples fichiers de configuration. Cela nécessite une ingénierie spécifique à votre environnement (adresses IP, noms d'hôtes, réseaux, sécurité, stockage, etc.).
 Je ne peux pas générer l'intégralité des playbooks, rôles, templates et variables Ansible nécessaires pour un déploiement de cette envergure de manière sécurisée et fonctionnelle sans connaître tous les détails de votre infrastructure.
 Cependant, je peux vous donner une structure directrice et les points clés à configurer via Ansible pour chaque composant :
 Structure Générale du Projet Ansible :
+```bash
 ansible-project/
 ├── inventory/
 │   ├── hosts.yml         # Fichier d'inventaire (définir groupes par région, par rôle: pg, etcd, pgpool)
@@ -124,6 +127,7 @@ ansible-project/
 │   └── ... (autres templates nécessaires)
 ├── playbook-deploy-cluster.yml # Playbook principal pour orchestrer le déploiement
 └── README.md
+```
 
 Points Clés à Gérer par Ansible pour Chaque Composant (RHEL 8) :
  * Rôle common :
