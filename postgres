@@ -1,0 +1,18 @@
+# 📦 Documentation - Pipeline Jenkins pour Cluster PostgreSQL Multi-Régions
+
+## 🧭 Objectif
+
+Déployer automatiquement un cluster PostgreSQL communautaire hautement disponible sur **3 régions** cloud, utilisant :
+
+- **Pgpool-II** pour le load balancing et la bascule automatique (failover),
+- **pgBackRest** pour la sauvegarde/restauration,
+- **Terraform** pour la création de l’infrastructure,
+- **Ansible** pour la configuration logicielle,
+- **Jenkins** comme orchestrateur CI/CD,
+- **GitHub** pour la configuration environnementale injectée par le client.
+
+---
+
+## ⚙️ Architecture Générale
+
+
