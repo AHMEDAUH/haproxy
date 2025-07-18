@@ -1,0 +1,145 @@
+{
+  "name": "PostgreSQL Full Monitoring",
+  "description": "Advanced PostgreSQL Dashboard using Prometheus/pg_exporter metrics",
+  "filters": [
+    {"field": "instance", "type": "string", "label": "Instance"},
+    {"field": "datname", "type": "string", "label": "Database"}
+  ],
+  "widgets": [
+    {
+      "title": "PostgreSQL Status",
+      "section": "Availability & Health",
+      "type": "chart",
+      "metric": "pg_up",
+      "aggregation": "avg",
+      "chartType": "gauge",
+      "thresholds": [{"value": 1, "color": "green"}, {"value": 0, "color": "red"}]
+    },
+    {
+      "title": "Active Connections",
+      "section": "Connections & Sessions",
+      "type": "chart",
+      "metric": "pg_stat_activity_count",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "blue"
+    },
+    {
+      "title": "Idle Connections",
+      "section": "Connections & Sessions",
+      "type": "chart",
+      "metric": "pg_idle_connections",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "lightblue"
+    },
+    {
+      "title": "Commits/sec",
+      "section": "Transactions & Performance",
+      "type": "chart",
+      "metric": "pg_stat_database_xact_commit",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "green"
+    },
+    {
+      "title": "Rollbacks/sec",
+      "section": "Transactions & Performance",
+      "type": "chart",
+      "metric": "pg_stat_database_xact_rollback",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "orange"
+    },
+    {
+      "title": "Deadlocks",
+      "section": "Locks & Queries",
+      "type": "chart",
+      "metric": "pg_locks_count",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "red"
+    },
+    {
+      "title": "Cache Hit Ratio",
+      "section": "Transactions & Performance",
+      "type": "chart",
+      "metric": "pg_cache_hit_ratio",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "purple"
+    },
+    {
+      "title": "Disk Reads/sec",
+      "section": "Storage & I/O",
+      "type": "chart",
+      "metric": "pg_stat_database_blks_read",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "yellow"
+    },
+    {
+      "title": "Buffer Hits/sec",
+      "section": "Storage & I/O",
+      "type": "chart",
+      "metric": "pg_stat_database_blks_hit",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "green"
+    },
+    {
+      "title": "Database Size",
+      "section": "Storage & I/O",
+      "type": "chart",
+      "metric": "pg_database_size_bytes",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "cyan"
+    },
+    {
+      "title": "Top 5 Queries by Exec Time",
+      "section": "Locks & Queries",
+      "type": "chart",
+      "metric": "pg_stat_statements_total_exec_time_seconds",
+      "aggregation": "avg",
+      "chartType": "bar",
+      "color": "red"
+    },
+    {
+      "title": "Checkpoints/sec",
+      "section": "Storage & I/O",
+      "type": "chart",
+      "metric": "pg_checkpoints_timed",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "blue"
+    },
+    {
+      "title": "WAL Writes/sec",
+      "section": "Storage & I/O",
+      "type": "chart",
+      "metric": "pg_wal_writes",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "brown"
+    },
+    {
+      "title": "Replication Lag (s)",
+      "section": "Replication",
+      "type": "chart",
+      "metric": "pg_replication_lag_seconds",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "orange"
+    },
+    {
+      "title": "Autovacuum Workers",
+      "section": "Maintenance",
+      "type": "chart",
+      "metric": "pg_autovacuum_workers",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "blue"
+    }
+  ]
+}
