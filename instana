@@ -1,0 +1,37 @@
+{
+  "name": "PostgreSQL Dashboard",
+  "widgets": [
+    {
+      "title": "PostgreSQL Status",
+      "type": "chart",
+      "metric": "pg_up",
+      "aggregation": "avg",
+      "chartType": "gauge",
+      "color": "green"
+    },
+    {
+      "title": "Active Connections",
+      "type": "chart",
+      "metric": "pg_stat_activity_count",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "blue"
+    },
+    {
+      "title": "Transactions Commit",
+      "type": "chart",
+      "metric": "pg_stat_database_xact_commit",
+      "aggregation": "rate",
+      "chartType": "line",
+      "color": "purple"
+    },
+    {
+      "title": "Deadlocks",
+      "type": "chart",
+      "metric": "pg_locks_count",
+      "aggregation": "avg",
+      "chartType": "line",
+      "color": "red"
+    }
+  ]
+}
