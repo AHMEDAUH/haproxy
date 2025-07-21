@@ -1,0 +1,8 @@
+- import_tasks: discover.yml
+  tags: discover
+
+- import_tasks: detach.yml
+  tags: detach
+
+- import_tasks: reattach.yml
+  tags: reattach

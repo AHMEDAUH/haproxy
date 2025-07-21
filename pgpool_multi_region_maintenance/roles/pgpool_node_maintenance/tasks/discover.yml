@@ -1,0 +1,38 @@
+- name: "Ensure Pgpool VIP for this region is reachable"
+  wait_for:
+    host: "{{ pgpool_vip }}"
+    port: "{{ pgpool_port }}"
+    timeout: 10
+  register: vip_check
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: "Fail if Pgpool VIP is unreachable"
+  fail:
+    msg: "Pgpool VIP {{ pgpool_vip }} for region {{ group_names[0] }} is not reachable"
+  when: vip_check.failed
+
+- name: "Fetch node info for this node"
+  command: >
+    pcp_node_info -h {{ pgpool_vip }} -p {{ pgpool_port }}
+    -U {{ pcp_user }} -n {{ node_id }}
+  register: node_info
+  changed_when: false
+
+- name: "Set node role"
+  set_fact:
+    node_role: "{{ 'primary' if 'primary' in node_info.stdout else 'standby' }}"
+
+- name: "Fetch all nodes info in this region"
+  command: >
+    pcp_node_info -h {{ pgpool_vip }} -p {{ pgpool_port }}
+    -U {{ pcp_user }} -n {{ item }}
+  with_sequence: start=0 end={{ (groups[group_names[0]] | length) - 1 }}
+  register: all_nodes
+  changed_when: false
+
+- name: "Detect current primary node in region"
+  set_fact:
+    current_primary_node: "{{ item.item }}"
+  when: "'primary' in item.stdout"
+  loop: "{{ all_nodes.results }}"

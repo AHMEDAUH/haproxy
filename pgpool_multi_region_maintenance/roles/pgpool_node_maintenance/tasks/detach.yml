@@ -1,0 +1,14 @@
+- name: "Fail if node is primary"
+  fail:
+    msg: "Node is primary in region {{ group_names[0] }}! Switchover must be automatic before maintenance."
+  when: node_role == "primary"
+
+- name: "Detach node from Pgpool in this region"
+  command: >
+    pcp_detach_node -h {{ pgpool_vip }} -p {{ pgpool_port }}
+    -U {{ pcp_user }} -n {{ node_id }}
+
+- name: "Stop PostgreSQL service"
+  service:
+    name: "postgresql-{{ pg_version }}"
+    state: stopped

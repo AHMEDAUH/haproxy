@@ -1,0 +1,4 @@
+pcp_user: "pcpadmin"
+pg_version: 15
+pg_data_dir: "/var/lib/pgsql/15/data"
+pgbackrest_stanza: "main"
