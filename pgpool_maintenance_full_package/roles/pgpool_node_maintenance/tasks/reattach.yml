@@ -1,0 +1,17 @@
+- name: Restore from pgBackRest
+  command: "pgbackrest --stanza={{ pgbackrest_stanza }} --delta restore"
+
+- name: Create standby.signal
+  file:
+    path: "{{ pg_data_dir }}/standby.signal"
+    state: touch
+    owner: postgres
+    group: postgres
+
+- name: Start PostgreSQL
+  service:
+    name: "postgresql-{{ pg_version }}"
+    state: started
+
+- name: Reattach node
+  command: "pcp_attach_node -h {{ pgpool_vip }} -p {{ pgpool_port }} -U {{ pcp_user }} -n {{ node_id }}"

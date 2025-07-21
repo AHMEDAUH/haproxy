@@ -1,0 +1,7 @@
+- name: Maintenance Pgpool/Postgres Multi-Region
+  hosts: all
+  serial: 1
+  gather_facts: false
+
+  roles:
+    - pgpool_node_maintenance

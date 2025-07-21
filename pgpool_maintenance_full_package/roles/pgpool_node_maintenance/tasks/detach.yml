@@ -1,0 +1,12 @@
+- name: Fail if node is primary
+  fail:
+    msg: "Node is primary! Switchover required before maintenance."
+  when: node_role == "primary"
+
+- name: Detach node from Pgpool
+  command: "pcp_detach_node -h {{ pgpool_vip }} -p {{ pgpool_port }} -U {{ pcp_user }} -n {{ node_id }}"
+
+- name: Stop PostgreSQL
+  service:
+    name: "postgresql-{{ pg_version }}"
+    state: stopped

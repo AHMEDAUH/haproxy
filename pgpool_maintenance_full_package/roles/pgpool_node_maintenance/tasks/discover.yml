@@ -1,0 +1,13 @@
+- name: Ensure Pgpool VIP reachable
+  wait_for:
+    host: "{{ pgpool_vip }}"
+    port: "{{ pgpool_port }}"
+    timeout: 10
+  register: vip_check
+  delegate_to: localhost
+  ignore_errors: true
+
+- name: Fail if Pgpool VIP unreachable
+  fail:
+    msg: "Pgpool VIP {{ pgpool_vip }} is not reachable"
+  when: vip_check.failed
