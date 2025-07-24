@@ -1,0 +1,62 @@
+1. Métriques générales (Global Stats)
+	•	uptime : Durée de fonctionnement de HAProxy.
+	•	pid : PID du processus principal (utile pour vérifier les redémarrages).
+	•	nbproc / nbthread : Nombre de processus et threads (en mode multi-process/threads).
+
+⸻
+
+✅ 2. Métriques de connexions
+	•	conn_rate : Taux de nouvelles connexions (connexions/s).
+	•	conn_tot : Nombre total de connexions depuis le démarrage.
+	•	sess_rate : Taux de nouvelles sessions (sessions/s).
+	•	sess_tot : Nombre total de sessions.
+
+⸻
+
+✅ 3. Métriques des backends/frontends
+
+Pour chaque frontend, backend et serveur :
+	•	status : UP / DOWN / NOLB (important pour détecter une panne).
+	•	scur : Sessions courantes (connexions actives).
+	•	smax : Sessions max atteintes.
+	•	rate : Nombre de requêtes/s.
+	•	req_rate (frontends) : Taux de requêtes HTTP.
+	•	req_tot : Total des requêtes HTTP.
+
+⸻
+
+✅ 4. Métriques de performance
+	•	qcur : Nombre de requêtes en file d’attente.
+	•	qmax : Taille max atteinte de la file d’attente.
+	•	ctime / rtime / ttime : Temps moyen (ms) pour établir la connexion, réponse serveur, total transaction.
+	•	srv_abrt : Nombre de requêtes abandonnées côté serveur.
+	•	cli_abrt : Nombre de requêtes abandonnées côté client.
+
+⸻
+
+✅ 5. Métriques d’erreurs
+	•	ereq : Erreurs de requêtes (syntaxe HTTP, etc.).
+	•	econ : Échecs de connexion côté serveur.
+	•	eresp : Réponses invalides du serveur.
+	•	wretr / wredis : Tentatives de réécriture ou redispatch.
+
+⸻
+
+✅ 6. Métriques de charge et saturation
+	•	utilisation CPU (via haproxy-systemd-wrapper ou exporter).
+	•	memusage : Utilisation mémoire (via système).
+	•	sess_rate_max : Pic de sessions/s (aide à calibrer la capacité).
+
+⸻
+
+✅ 7. Métriques TLS (si HTTPS activé)
+	•	ssl_key_rate : Nombre de négociations SSL/s.
+	•	ssl_reuse : Taux de réutilisation de session SSL.
+	•	ssl_conn_tot : Total connexions SSL.
+
+⸻
+
+✅ 8. Métriques pour le Health Check
+	•	chkfail : Nombre d’échecs aux checks.
+	•	chkdown : Nombre de transitions UP → DOWN.
+	•	lastchg : Temps depuis le dernier changement d’état.
