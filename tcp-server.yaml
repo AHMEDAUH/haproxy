@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tcp-test
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tcp-server-script
+  namespace: tcp-test
+data:
+  server.py: |
+    import socket
+
+    HOST = '0.0.0.0'
+    PORT = 9000
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen()
+        print(f"Listening on {PORT}...")
+        while True:
+            conn, addr = s.accept()
+            with conn:
+                print(f"Connected by {addr}")
+                data = conn.recv(1024)
+                if not data:
+                    continue
+                print(f"Received: {data.decode().strip()}")
+                conn.sendall(b'ACK\n')
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tcp-server
+  namespace: tcp-test
+spec:
+  containers:
+  - name: tcp-server
+    image: python:3.9
+    command: ["python", "/app/server.py"]
+    volumeMounts:
+    - name: script-volume
+      mountPath: /app
+  volumes:
+  - name: script-volume
+    configMap:
+      name: tcp-server-script
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tcp-service
+  namespace: tcp-test
+spec:
+  selector:
+    app: tcp-server
+  ports:
+  - name: tcp
+    port: 9000
+    targetPort: 9000
+    protocol: TCP
+  type: ClusterIP
