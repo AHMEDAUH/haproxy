@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.2">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="TCP Test Plan" enabled="true">
+      <stringProp name="TestPlan.comments"></stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <stringProp name="TestPlan.serialize_threadgroups">false</stringProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="TCP Users" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">-1</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">100</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">30</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+      </ThreadGroup>
+      <hashTree>
+        <TCPSampler guiclass="TCPSamplerGui" testclass="TCPSampler" testname="TCP Request" enabled="true">
+          <stringProp name="TCPSampler.server">tcp-service.tcp-test.svc.cluster.local</stringProp>
+          <stringProp name="TCPSampler.port">9000</stringProp>
+          <stringProp name="TCPSampler.filename"></stringProp>
+          <stringProp name="TCPSampler.request">PING\n</stringProp>
+          <boolProp name="TCPSampler.reUseConnection">true</boolProp>
+          <boolProp name="TCPSampler.closeConnection">false</boolProp>
+          <stringProp name="TCPSampler.timeout">5000</stringProp>
+          <stringProp name="TCPSampler.soLinger"></stringProp>
+          <stringProp name="TCPSampler.eolByte">10</stringProp>
+        </TCPSampler>
+        <hashTree/>
+        <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Uniform Random Timer" enabled="true">
+          <stringProp name="ConstantTimer.delay">100</stringProp>
+          <stringProp name="RandomTimer.range">200</stringProp>
+        </UniformRandomTimer>
+        <hashTree/>
+        <ResultCollector guiclass="SummaryReportGui" testclass="ResultCollector" testname="Summary Report" enabled="true">
+          <boolProp name="ResultCollector.error_logging">false</boolProp>
+          <objProp>
+            <name>saveConfig</name>
+            <value class="SampleSaveConfiguration">
+              <boolProp name="time">true</boolProp>
+              <boolProp name="latency">true</boolProp>
+              <boolProp name="timestamp">true</boolProp>
+              <boolProp name="success">true</boolProp>
+              <boolProp name="label">true</boolProp>
+              <boolProp name="code">true</boolProp>
+              <boolProp name="message">true</boolProp>
+              <boolProp name="threadName">true</boolProp>
+              <boolProp name="dataType">true</boolProp>
+              <boolProp name="encoding">false</boolProp>
+              <boolProp name="assertions">true</boolProp>
+              <boolProp name="subresults">true</boolProp>
+              <boolProp name="responseData">false</boolProp>
+              <boolProp name="samplerData">false</boolProp>
+              <boolProp name="xml">false</boolProp>
+              <boolProp name="fieldNames">true</boolProp>
+              <boolProp name="responseHeaders">false</boolProp>
+              <boolProp name="requestHeaders">false</boolProp>
+              <boolProp name="responseDataOnError">false</boolProp>
+              <boolProp name="saveAssertionResultsFailureMessage">true</boolProp>
+              <boolProp name="assertionsResultsToSave">0</boolProp>
+              <boolProp name="bytes">true</boolProp>
+              <boolProp name="sentBytes">true</boolProp>
+              <boolProp name="url">true</boolProp>
+              <boolProp name="threadCounts">true</boolProp>
+              <boolProp name="idleTime">true</boolProp>
+              <boolProp name="connectTime">true</boolProp>
+            </value>
+          </objProp>
+          <stringProp name="filename"></stringProp>
+        </ResultCollector>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
