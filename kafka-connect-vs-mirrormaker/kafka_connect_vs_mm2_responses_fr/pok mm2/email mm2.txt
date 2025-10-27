@@ -1,0 +1,121 @@
+Parfait — voici exactement ce qu’il te faut pour déployer MirrorMaker 2 en conteneur (avec TLS côté A et B, sans SASL, réplication de tous les topics métier sans préfixe, avec réplication des offsets).
+Tes clusters Kafka A et B ainsi que Zookeeper existent déjà (MM2 ne s’y connecte pas—il parle uniquement aux brokers).
+Fichier 1 — docker-compose.mm2.yml
+Un service unique mm2 (basé sur l’image Confluent Kafka Connect) qui lance connect-mirror-maker avec ta conf.
+Il monte un fichier mm2.properties local (cf. fichier 2 ci-dessous).
+version: '3.8'
+
+services:
+  mm2:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    container_name: mm2
+    restart: unless-stopped
+    # Si tes brokers sont accessibles par DNS depuis cette machine, le bridge suffit.
+    # Si besoin d’utiliser l’IP de la machine hôte et ses résolutions, tu peux passer en host_network (Linux uniquement)
+    # network_mode: "host"
+    volumes:
+      - ./mm2.properties:/etc/mm2/mm2.properties:ro
+      # Optionnel : si tu utilises des CAs custom, monte ton bundle :
+      # - ./ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt:ro
+    command: ["bash","-lc","connect-mirror-maker /etc/mm2/mm2.properties"]
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q 'Kafka Connect started' /var/log/kafka/connectDistributed.out || ps aux | grep -q '[c]onnect-mirror-maker'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    # Si tu veux suivre facilement les logs :
+    # logging:
+    #   driver: json-file
+    #   options:
+    #     max-size: "10m"
+    #     max-file: "3"
+Lancement :
+docker compose -f docker-compose.mm2.yml up -d
+docker logs -f mm2
+Fichier 2 — mm2.properties
+TLS activé, pas de SASL (on part du principe que tes certificats sont trusted (LE/AC reconnue) → pas de truststore nécessaire).
+Sans préfixe (policy = IdentityReplicationPolicy) → le topic orders sur A devient orders sur B.
+Tous les topics métier (on exclut les topics internes par défaut : __consumer_offsets, _confluent.*, _schemas, etc., pour éviter les conflits).
+Réplication des offsets des consumer groups activée (DR prêt).
+Remplace les ... par ta vraie liste de brokers (A et B) sur 9093 (TLS).
+# --- Clusters en présence ---
+clusters = a, b
+
+# Bootstrap des clusters (TLS sans SASL)
+a.bootstrap.servers=broker-a1.mydomain:9093,broker-a2.mydomain:9093
+b.bootstrap.servers=broker-b1.mydomain:9093,broker-b2.mydomain:9093
+
+# Sécurité : TLS uniquement (certificats AC reconnue -> pas de truststore nécessaire)
+a.security.protocol=SSL
+b.security.protocol=SSL
+# Si tu as des CAs custom, dé-commente et fournis un truststore (monté via volume) :
+# a.ssl.truststore.location=/etc/mm2/truststore.jks
+# a.ssl.truststore.password=<changeit>
+# b.ssl.truststore.location=/etc/mm2/truststore.jks
+# b.ssl.truststore.password=<changeit>
+
+# --- Direction A -> B ---
+a->b.enabled=true
+
+# Réplication de tous les topics métier (exclusion des internes)
+a->b.topics=.*
+a->b.topics.blacklist=^(__.*|_confluent\..*|_schemas)$
+
+# Sans préfixe sur B (toujours prudence si des topics homonymes existent déjà sur B)
+replication.policy.class=org.apache.kafka.connect.mirror.IdentityReplicationPolicy
+
+# Réplication des offsets / checkpointers (DR)
+emit.heartbeats.enabled=true
+emit.checkpoints.enabled=true
+sync.group.offsets.enabled=true
+groups=.*
+# Optionnel : fréquence de sync offsets (par défaut 60s)
+offset.syncs.topic.location=b
+offset.syncs.topic.replication.factor=3
+refresh.topics.enabled=true
+refresh.topics.interval.seconds=60
+refresh.groups.enabled=true
+refresh.groups.interval.seconds=60
+refresh.interval.seconds=60
+
+# Réplication des configs de topics (utile pour conserver les partitions/retentions)
+sync.topic.configs.enabled=true
+# Pas d’ACLs (SASL off). Si tu avais des ACLs, tu pourrais activer :
+# sync.topic.acls.enabled=true
+
+# Création des topics sur B si absent
+replication.factor=3
+offsets.sync.out.of.sync.threshold=1000
+
+# Fiabilité / perf
+# a->b.emit.heartbeats.interval.seconds=5
+# tasks.max=4
+# producer.max.request.size=10485760
+# consumer.max.partition.fetch.bytes=10485760
+Note importante (sans préfixe) : tu as demandé Prefix = Non. MM2 va donc créer le topic du même nom sur B si absent, et y répliquer les messages.
+Assure-toi qu’il n’existe pas déjà sur B un producteur qui écrit sur un topic du même nom (risque de mélange).
+Vérifications rapides (après démarrage)
+Logs du conteneur
+docker logs -f mm2
+Cherche “Starting Kafka Connect”, puis la création des connecteurs MirrorSource/Checkpoint/Heartbeat.
+Topics côté B
+Tu devrais voir apparaître les orders, payments, etc., sans préfixe.
+Les topics internes de MM2 (côté B) :
+heartbeats
+checkpoints.internal
+offset-syncs.internal
+Réplication d’un topic test
+Produis sur orders côté A → lis orders côté B (latence WAN + buffer MM2)
+Offsets de consumers (DR)
+Fais tourner un consumer group côté A
+Vérifie sur B : après activation de la bascule, le groupe peut reprendre depuis les offsets checkpointés
+Variantes (si nécessaire)
+Ajout d’un truststore (si finalement certificats SELF-SIGNED)
+Crée un truststore.jks, monte-le dans le conteneur et dé-commente les propriétés ssl.truststore.* ci-dessus.
+Filtrer seulement certains topics
+a->b.topics=^(orders|payments|invoices)\..*
+Limiter les partitions créées sur B
+replication.factor=3
+# et éventuellement :
+# topic.creation.enabled=true
+# a->b.emit.checkpoints.interval.seconds=10

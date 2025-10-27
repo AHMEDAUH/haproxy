@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mm2:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    container_name: mm2
+    restart: unless-stopped
+    # Si tes brokers sont accessibles par DNS depuis cette machine, le bridge suffit.
+    # Si besoin d’utiliser l’IP de la machine hôte et ses résolutions, tu peux passer en host_network (Linux uniquement)
+    # network_mode: "host"
+    volumes:
+      - ./mm2.properties:/etc/mm2/mm2.properties:ro
+      # Optionnel : si tu utilises des CAs custom, monte ton bundle :
+      # - ./ca-bundle.pem:/etc/ssl/certs/ca-bundle.crt:ro
+    command: ["bash","-lc","connect-mirror-maker /etc/mm2/mm2.properties"]
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q 'Kafka Connect started' /var/log/kafka/connectDistributed.out || ps aux | grep -q '[c]onnect-mirror-maker'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    # Si tu veux suivre facilement les logs :
+    # logging:
+    #   driver: json-file
+    #   options:
+    #     max-size: "10m"
+    #     max-file: "3"

@@ -1,0 +1,47 @@
+{
+  "name": "debezium-postgres-PLACEHOLDER_NAME",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+
+    "topic.prefix": "pgapp", 
+    "database.hostname": "PLACEHOLDER_PG_HOST",
+    "database.port": "5432",
+    "database.user": "PLACEHOLDER_PG_USER",
+    "database.password": "PLACEHOLDER_PG_PASSWORD",
+    "database.dbname": "PLACEHOLDER_PG_DB",
+
+    "plugin.name": "pgoutput",
+    "slot.name": "debezium_pgapp",
+    "publication.autocreate.mode": "filtered", 
+
+    "schema.include.list": "public",
+    "table.include.list": "public.orders,public.customers",
+
+    "snapshot.mode": "initial", 
+    "tombstones.on.delete": "false",
+    "decimal.handling.mode": "string",
+    "time.precision.mode": "connect",
+
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "SCHEMA_REGISTRY_URL",
+    "value.converter.schema.registry.url": "SCHEMA_REGISTRY_URL",
+
+    "transforms": "unwrap,addHeaders",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "true",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.addHeaders.type": "org.apache.kafka.connect.transforms.HeaderFrom",
+    "transforms.addHeaders.static.headers": "source=postgres",
+
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "dlq.debezium.postgres",
+    "errors.deadletterqueue.context.headers.enable": "true"
+
+    /* Si Postgres en TLS:
+    ,"database.sslmode": "require"
+    ,"database.sslrootcert": "/path/in/container/to/rootCA.pem"
+    */
+  }
+}

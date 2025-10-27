@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    container_name: kafka-connect
+    restart: unless-stopped
+
+    # ⚠️ Si le résolveur DNS / réseau de la machine peut joindre kafka1/kafka2, le mode bridge suffit.
+    # network_mode: "host"  # (optionnel, Linux uniquement si besoin)
+
+    ports:
+      - "8083:8083"   # REST API Kafka Connect
+
+    environment:
+      # (La plupart des réglages sont dans le .properties ; on lance connect-distributed directement)
+      # Rien d'obligatoire ici
+
+    volumes:
+      # Fichier de configuration du worker
+      - ./connect-distributed.properties:/etc/kafka/connect-distributed.properties:ro
+      # Répertoire persistant pour les plugins (confluent-hub installe ici)
+      - ./plugins:/usr/share/confluent-hub-components
+
+    command: >
+      bash -lc "
+      echo '>>> Installing Debezium Postgres connector via confluent-hub...' &&
+      confluent-hub install --no-prompt debezium/debezium-connector-postgresql:2.4.2 &&
+      echo '>>> Starting Kafka Connect (distributed mode)...' &&
+      connect-distributed /etc/kafka/connect-distributed.properties
+      "
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/connectors || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30

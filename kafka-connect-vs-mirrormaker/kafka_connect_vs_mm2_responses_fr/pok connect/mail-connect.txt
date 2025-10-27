@@ -1,0 +1,25 @@
+Lancer Connect
+docker compose -f docker-compose.kafka-connect.yml up -d
+docker logs -f kafka-connect
+
+2- Créer le connecteur (après avoir remplacé les placeholders dans le JSON)
+
+curl -X POST http://localhost:8083/connectors \
+  -H "Content-Type: application/json" \
+  --data @connector-debezium-postgres-template.json
+
+3- Vérifier le statut
+
+curl -s http://localhost:8083/connectors/debezium-postgres-PLACEHOLDER_NAME/status | jq .
+
+Pré-requis côté Postgres (rappel)
+Activer le WAL logical (postgresql.conf) :
+wal_level=logical
+max_wal_senders=10
+max_replication_slots=10
+
+Utilisateur PG avec droits REPLICATION + SELECT sur schémas/tables
+Port 5432 accessible depuis le conteneur kafka-connect
+La publication sera auto-créée si publication.autocreate.mode=filtered
+
+...
