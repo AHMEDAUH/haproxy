@@ -1,0 +1,29 @@
+startDelaySeconds: 0
+hostPort: 0.0.0.0:1235
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # JVM
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(\w+):'
+    name: jvm_memory_heap_$1_bytes
+    type: GAUGE
+
+  # MM2 / Connect metrics (MirrorSource / Heartbeat / Checkpoint)
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=(.+), task=(.+)><>([^:]+)'
+    name: mm2_task_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+  - pattern: 'kafka.connect<type=mirror-metrics, source=(.+), target=(.+)><>([^:]+)'
+    name: mm2_replication_$3
+    labels:
+      source: "$1"
+      target: "$2"
+    type: GAUGE
+
+  # Lag/latency often exposed via source/sink metrics; keep generic rules
+  - pattern: 'kafka.connect<type=.+><>([^:]+)'
+    name: mm2_$1
+    type: GAUGE

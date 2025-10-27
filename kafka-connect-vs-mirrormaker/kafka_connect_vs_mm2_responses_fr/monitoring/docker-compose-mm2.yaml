@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  mm2:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    container_name: mm2
+    restart: unless-stopped
+    ports:
+      - "1235:1235"      # Prometheus JMX Exporter (metrics)
+    volumes:
+      - ./mm2.properties:/etc/mm2/mm2.properties:ro
+      # --- JMX Exporter (Prometheus) ---
+      - ./monitoring/jmx/jmx_prometheus_javaagent.jar:/opt/jmx/jmx_prometheus_javaagent.jar:ro
+      - ./monitoring/jmx/mm2-jmx.yml:/etc/jmx/mm2-jmx.yml:ro
+    command: >
+      bash -lc "
+      export KAFKA_OPTS='-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=1235:/etc/jmx/mm2-jmx.yml' &&
+      connect-mirror-maker /etc/mm2/mm2.properties
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -q '[c]onnect-mirror-maker'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+

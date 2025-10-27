@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:7.5.0
+    container_name: kafka-connect
+    restart: unless-stopped
+    ports:
+      - "8083:8083"      # REST Connect
+      - "1234:1234"      # Prometheus JMX Exporter (metrics)
+    environment: {}
+    volumes:
+      - ./connect-distributed.properties:/etc/kafka/connect-distributed.properties:ro
+      - ./plugins:/usr/share/confluent-hub-components
+      # --- JMX Exporter (Prometheus) ---
+      - ./monitoring/jmx/jmx_prometheus_javaagent.jar:/opt/jmx/jmx_prometheus_javaagent.jar:ro
+      - ./monitoring/jmx/kafka-connect-jmx.yml:/etc/jmx/kafka-connect-jmx.yml:ro
+    command: >
+      bash -lc "
+      echo '>>> Installing Debezium Postgres connector via confluent-hub...' &&
+      confluent-hub install --no-prompt debezium/debezium-connector-postgresql:2.4.2 &&
+      export KAFKA_OPTS='-javaagent:/opt/jmx/jmx_prometheus_javaagent.jar=1234:/etc/jmx/kafka-connect-jmx.yml' &&
+      echo '>>> Starting Kafka Connect (distributed)...' &&
+      connect-distributed /etc/kafka/connect-distributed.properties
+      "
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8083/connectors || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  # (Optionnel) Prometheus qui scrape Connect et MM2
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    depends_on: [kafka-connect]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+

@@ -1,0 +1,40 @@
+startDelaySeconds: 0
+hostPort: 0.0.0.0:1234
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # JVM
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(\w+):'
+    name: jvm_memory_heap_$1_bytes
+    type: GAUGE
+  - pattern: 'java.lang<type=GarbageCollector,name=(.+)><>CollectionCount'
+    name: jvm_gc_collections_total
+    labels:
+      gc: "$1"
+    type: COUNTER
+
+  # Kafka Connect worker/task
+  - pattern: 'kafka.connect<type=connect-worker-metrics, client-id=.+><>([^:]+)'
+    name: kafka_connect_worker_$1
+    type: GAUGE
+  - pattern: 'kafka.connect<type=connector-task-metrics, connector=(.+), task=(.+)><>([^:]+)'
+    name: kafka_connect_task_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+
+  # Source/Sink record rates
+  - pattern: 'kafka.connect<type=source-task-metrics, connector=(.+), task=(.+)><>([^:]+)'
+    name: kafka_connect_source_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
+  - pattern: 'kafka.connect<type=sink-task-metrics, connector=(.+), task=(.+)><>([^:]+)'
+    name: kafka_connect_sink_$3
+    labels:
+      connector: "$1"
+      task: "$2"
+    type: GAUGE
